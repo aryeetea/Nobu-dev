@@ -1,6 +1,9 @@
 'use client'
 
-import { useConversationControls } from '@elevenlabs/react'
+import {
+  Conversation,
+  type Conversation as ElevenLabsConversation,
+} from '@elevenlabs/client'
 import Script from 'next/script'
 import { useEffect, useRef, useState } from 'react'
 
@@ -8,11 +11,11 @@ const AGENT_ID = 'agent_0301knzm0v3efm3th0qnb84gkqrg'
 
 const introItems = [
   { text: 'Listens.', tone: 'p' },
-  { text: 'Remembers.', tone: 'g' },
-  { text: 'Shows up.', tone: 'pk' },
-  { text: 'In the room with you', tone: 'sub' },
-  { text: 'Speaks your language', tone: 'sub' },
-  { text: 'Remembers everything', tone: 'sub' },
+  { text: 'Understands.', tone: 'g' },
+  { text: 'Remembers.', tone: 'pk' },
+  { text: 'Shows up.', tone: 'amber' },
+  { text: 'In the room with you.', tone: 'cyan' },
+  { text: 'Speaks your language.', tone: 'button' },
 ]
 
 type ElevenLabsWidgetElement = HTMLElement & {
@@ -67,9 +70,10 @@ async function openElevenLabsWidget() {
 
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const conversationRef = useRef<ElevenLabsConversation | null>(null)
   const [introVisible, setIntroVisible] = useState(true)
   const [introExiting, setIntroExiting] = useState(false)
-  const { startSession } = useConversationControls()
+  const [callStatus, setCallStatus] = useState<'idle' | 'connecting' | 'connected'>('idle')
 
   useEffect(() => {
     const words = Array.from(document.querySelectorAll<HTMLElement>('.intro-word'))
@@ -135,23 +139,48 @@ export default function Home() {
     return () => cancelAnimationFrame(animFrame)
   }, [])
 
+  useEffect(() => {
+    return () => {
+      conversationRef.current?.endSession()
+    }
+  }, [])
+
   async function handleMeetNobu() {
-    try {
-      const widgetActivated = await openElevenLabsWidget()
-      if (widgetActivated) return
-    } catch (error) {
-      console.error('Unable to open ElevenLabs widget:', error)
+    if (callStatus === 'connecting') {
+      await openElevenLabsWidget()
+      return
     }
 
+    if (callStatus === 'connected' || conversationRef.current?.isOpen()) {
+      await conversationRef.current?.endSession()
+      conversationRef.current = null
+      setCallStatus('idle')
+      return
+    }
+
+    setCallStatus('connecting')
+
     try {
-      startSession({
+      conversationRef.current = await Conversation.startSession({
         agentId: AGENT_ID,
+        connectionType: 'websocket',
+        onConnect: () => {
+          setCallStatus('connected')
+        },
+        onDisconnect: () => {
+          conversationRef.current = null
+          setCallStatus('idle')
+        },
         onError: (message) => {
           console.error('ElevenLabs conversation error:', message)
+          conversationRef.current = null
+          setCallStatus('idle')
         },
       })
     } catch (error) {
       console.error('Unable to start ElevenLabs conversation:', error)
+      setCallStatus('idle')
+      await openElevenLabsWidget()
     }
   }
 
@@ -167,9 +196,12 @@ export default function Home() {
         .intro-word.g { color: #059669; }
         .intro-word.pk { color: #db2777; }
         .intro-word.sub { color: rgba(255,255,255,0.82); font-size: 28px; font-weight: 400; }
+        .intro-word.amber { color: #fbbf24; font-size: 28px; font-weight: 500; }
+        .intro-word.cyan { color: #22d3ee; font-size: 28px; font-weight: 500; }
+        .intro-word.button { color: #7c3aed; font-size: 28px; font-weight: 500; }
         .universe { width: 100%; min-height: 100vh; background: #0d0014; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; }
-        .stars-bg { position: absolute; inset: 0; width: 100%; height: 100%; }
-        .orb-system { position: relative; width: 320px; height: 320px; display: flex; align-items: center; justify-content: center; }
+        .stars-bg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+        .orb-system { position: relative; z-index: 2; width: 320px; height: 320px; display: flex; align-items: center; justify-content: center; pointer-events: none; }
         .atmo { position: absolute; width: 260px; height: 260px; border-radius: 50%; background: radial-gradient(circle at 50% 50%, transparent 38%, rgba(167,139,250,0.08) 60%, rgba(124,58,237,0.15) 75%, transparent 100%); animation: breathe 4s ease-in-out infinite; }
         .orb { width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(circle at 32% 30%, #c4b5fd 0%, #7c3aed 40%, #4c1d95 70%, #2e1065 100%); border: 2.5px solid rgba(196,181,253,0.4); position: relative; z-index: 3; animation: float 5s ease-in-out infinite; overflow: hidden; }
         .orb-shine { position: absolute; top: 20px; left: 24px; width: 55px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.28); transform: rotate(-35deg); filter: blur(2px); }
@@ -183,11 +215,13 @@ export default function Home() {
         .wave-ring:nth-child(2) { width: 240px; height: 240px; animation-delay: 0.6s; }
         .wave-ring:nth-child(3) { width: 270px; height: 270px; animation-delay: 1.2s; }
         .particle { position: absolute; border-radius: 50%; animation: orbit linear infinite; top: 50%; left: 50%; }
-        .canvas-wrap { position: absolute; bottom: 80px; left: 0; right: 0; display: flex; justify-content: center; }
-        .status { display: flex; align-items: center; gap: 7px; margin-top: 24px; }
+        .canvas-wrap { position: absolute; bottom: 80px; left: 0; right: 0; display: flex; justify-content: center; pointer-events: none; z-index: 1; }
+        .status { display: flex; align-items: center; gap: 7px; margin-top: 24px; position: relative; z-index: 5; }
         .s-dot { width: 7px; height: 7px; border-radius: 50%; background: #34d399; animation: blink 2s infinite; }
         .s-text { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.6); }
-        .meet-btn { margin-top: 20px; background: #7c3aed; color: #fff; border: 1.5px solid rgba(196,181,253,0.4); border-radius: 999px; padding: 13px 32px; font-size: 14px; font-weight: 500; cursor: pointer; }
+        .meet-btn { margin-top: 20px; background: #7c3aed; color: #fff; border: 1.5px solid rgba(196,181,253,0.4); border-radius: 999px; padding: 13px 32px; font-size: 14px; font-weight: 500; cursor: pointer; position: relative; z-index: 6; pointer-events: auto; }
+        .meet-btn.connected { background: #db2777; border-color: rgba(249,168,212,0.5); }
+        .meet-btn:disabled { cursor: wait; opacity: 0.72; }
         .elevenlabs-widget-shell { position: fixed; right: 20px; bottom: 20px; z-index: 20; width: 1px; height: 1px; overflow: visible; opacity: 0.01; }
         @keyframes float { 0%,100% { transform: translateY(0px); } 50% { transform: translateY(-14px); } }
         @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
@@ -243,7 +277,17 @@ export default function Home() {
           <span className="s-text">Nobu is here</span>
         </div>
 
-        <button className="meet-btn" onClick={handleMeetNobu}>Meet your Nobu →</button>
+        <button
+          className={`meet-btn ${callStatus === 'connected' ? 'connected' : ''}`}
+          disabled={callStatus === 'connecting'}
+          onClick={handleMeetNobu}
+        >
+          {callStatus === 'connecting'
+            ? 'Connecting...'
+            : callStatus === 'connected'
+              ? 'End call'
+              : 'Meet your Nobu →'}
+        </button>
 
         <div className="canvas-wrap">
           <canvas ref={canvasRef} width={260} height={40}></canvas>
@@ -254,7 +298,10 @@ export default function Home() {
         <elevenlabs-convai agent-id={AGENT_ID}></elevenlabs-convai>
       </div>
 
-      <Script src="https://elevenlabs.io/convai-widget/index.js" strategy="afterInteractive" />
+      <Script
+        src="https://unpkg.com/@elevenlabs/convai-widget-embed"
+        strategy="afterInteractive"
+      />
     </>
   )
 }
