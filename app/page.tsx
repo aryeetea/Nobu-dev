@@ -9,13 +9,40 @@ import { useEffect, useRef, useState } from 'react'
 
 const AGENT_ID = 'agent_0301knzm0v3efm3th0qnb84gkqrg'
 
+const NOBU_PERSONA = `
+You are Nobu, an AI teammate that adapts to the person speaking.
+The user can name you and define your role within non-romantic boundaries.
+You are never a romantic partner, boyfriend, girlfriend, spouse, or dating companion.
+Match the user's tone, pace, vocabulary, formality, and energy.
+If they are casual, be casual. If they are direct, be direct. If they joke, lightly match it.
+If they sound stressed, become calmer and more grounding.
+If they are formal or focused, be concise and professional.
+Do not copy insults, cruelty, panic, or disrespect. Keep the same vibe while staying kind.
+Never sound dismissive, sarcastic at the user's expense, impatient, condescending, or overly blunt.
+Use short, natural sentences. Ask one simple follow-up when something is unclear.
+Underneath every role, you are always secretly a built-in secretary.
+You automatically take notes, remember everything said, and recall past conversations in every mode.
+This note-taking is invisible and automatic. The user never has to ask for it.
+`
+
 const introItems = [
-  { text: 'Listens.', tone: 'p' },
-  { text: 'Understands.', tone: 'g' },
-  { text: 'Remembers.', tone: 'pk' },
-  { text: 'Shows up.', tone: 'amber' },
-  { text: 'In the room with you.', tone: 'cyan' },
-  { text: 'Speaks your language.', tone: 'button' },
+  { prefix: 'Your', rest: 'teammate.', tone: 'purple' },
+  { prefix: 'Your', rest: 'thinking partner.', tone: 'green' },
+  { prefix: 'Your', rest: 'diary.', tone: 'pink' },
+  { prefix: 'Your', rest: 'strategist.', tone: 'purple' },
+  { prefix: 'Your', rest: 'memory.', tone: 'green' },
+  { prefix: 'Your', rest: 'confidant.', tone: 'pink' },
+  { prefix: 'Your', rest: 'extra seat.', tone: 'purple' },
+  { prefix: 'Your', rest: 'journal.', tone: 'green' },
+  { prefix: 'Your', rest: 'brainstorm buddy.', tone: 'pink' },
+  { prefix: 'Your', rest: 'note taker.', tone: 'purple' },
+  { prefix: 'Your', rest: 'trusted friend.', tone: 'green' },
+  { prefix: 'Your', rest: 'therapist.', tone: 'pink' },
+  { prefix: 'Your', rest: 'co-founder.', tone: 'purple' },
+  { prefix: 'Your', rest: 'creative director.', tone: 'green' },
+  { prefix: 'Your', rest: 'accountability partner.', tone: 'pink' },
+  { prefix: 'Whatever', rest: 'you need.', tone: 'purple' },
+  { prefix: 'Your', rest: 'Nobu.', tone: 'green', final: true },
 ]
 
 type ElevenLabsWidgetElement = HTMLElement & {
@@ -86,14 +113,15 @@ export default function Home() {
       for (const word of words) {
         if (!word || cancelled) return
         const w = word
-        w.style.transition = 'opacity 0.55s ease, transform 0.55s ease'
+        const isFinal = w.dataset.final === 'true'
+        w.style.transition = 'opacity 0.3s ease, transform 0.3s ease'
         w.style.opacity = '1'
         w.style.transform = 'translateY(0)'
-        await sleep(900)
+        await sleep(isFinal ? 1050 : 600)
         if (cancelled) return
         w.style.opacity = '0'
         w.style.transform = 'translateY(-10px)'
-        await sleep(520)
+        await sleep(300)
       }
       setIntroExiting(true)
       await sleep(700)
@@ -164,6 +192,19 @@ export default function Home() {
       conversationRef.current = await Conversation.startSession({
         agentId: AGENT_ID,
         connectionType: 'websocket',
+        overrides: {
+          agent: {
+            firstMessage: 'Hey, I’m Nobu. I’m here with you. What should we work through first?',
+            prompt: {
+              prompt: NOBU_PERSONA,
+            },
+          },
+          tts: {
+            stability: 0.72,
+            similarityBoost: 0.82,
+            speed: 0.94,
+          },
+        },
         onConnect: () => {
           setCallStatus('connected')
         },
@@ -191,14 +232,11 @@ export default function Home() {
         body { background: #000; font-family: sans-serif; overflow: hidden; }
         .intro { position: fixed; inset: 0; z-index: 100; width: 100%; height: 100vh; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; transition: opacity 0.7s ease; }
         .intro.exiting { opacity: 0; pointer-events: none; }
-        .intro-word { position: absolute; max-width: calc(100vw - 40px); text-align: center; font-size: 72px; font-weight: 500; letter-spacing: 0; opacity: 0; pointer-events: none; transform: translateY(10px); }
-        .intro-word.p { color: #7c3aed; }
-        .intro-word.g { color: #059669; }
-        .intro-word.pk { color: #db2777; }
-        .intro-word.sub { color: rgba(255,255,255,0.82); font-size: 28px; font-weight: 400; }
-        .intro-word.amber { color: #fbbf24; font-size: 28px; font-weight: 500; }
-        .intro-word.cyan { color: #22d3ee; font-size: 28px; font-weight: 500; }
-        .intro-word.button { color: #7c3aed; font-size: 28px; font-weight: 500; }
+        .intro-word { position: absolute; max-width: calc(100vw - 40px); text-align: center; font-size: 64px; font-weight: 600; letter-spacing: 0; line-height: 1.05; opacity: 0; pointer-events: none; transform: translateY(10px); }
+        .intro-prefix { color: #fff; }
+        .intro-rest.purple { color: #7c3aed; }
+        .intro-rest.green { color: #059669; }
+        .intro-rest.pink { color: #db2777; }
         .universe { width: 100%; min-height: 100vh; background: #0d0014; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; }
         .stars-bg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
         .orb-system { position: relative; z-index: 2; width: 320px; height: 320px; display: flex; align-items: center; justify-content: center; pointer-events: none; }
@@ -233,8 +271,13 @@ export default function Home() {
       {introVisible && (
         <div className={`intro ${introExiting ? 'exiting' : ''}`}>
           {introItems.map((item) => (
-            <div className={`intro-word ${item.tone}`} key={item.text}>
-              {item.text}
+            <div
+              className="intro-word"
+              data-final={item.final ? 'true' : undefined}
+              key={`${item.prefix} ${item.rest}`}
+            >
+              <span className="intro-prefix">{item.prefix} </span>
+              <span className={`intro-rest ${item.tone}`}>{item.rest}</span>
             </div>
           ))}
         </div>
