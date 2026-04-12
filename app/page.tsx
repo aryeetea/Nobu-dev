@@ -1,7 +1,10 @@
 'use client'
 
+import { useConversationControls } from '@elevenlabs/react'
 import Script from 'next/script'
 import { useEffect, useRef, useState } from 'react'
+
+const AGENT_ID = 'agent_0301knzm0v3efm3th0qnb84gkqrg'
 
 const introItems = [
   { text: 'Listens.', tone: 'p' },
@@ -12,10 +15,61 @@ const introItems = [
   { text: 'Remembers everything', tone: 'sub' },
 ]
 
+type ElevenLabsWidgetElement = HTMLElement & {
+  open?: () => void | Promise<void>
+  start?: () => void | Promise<void>
+  startSession?: () => void | Promise<void>
+  toggle?: () => void | Promise<void>
+}
+
+const widgetButtonSelectors = [
+  'button',
+  '[role="button"]',
+  '[aria-label*="start" i]',
+  '[aria-label*="call" i]',
+  '[aria-label*="talk" i]',
+  '[aria-label*="conversation" i]',
+  '[aria-label*="microphone" i]',
+]
+
+function dispatchUserClick(element: Element) {
+  element.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, composed: true }))
+  element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true }))
+  element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, composed: true }))
+  element.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }))
+}
+
+async function openElevenLabsWidget() {
+  const widget = document.querySelector<ElevenLabsWidgetElement>('elevenlabs-convai')
+  if (!widget) return false
+
+  for (const method of ['startSession', 'start'] as const) {
+    if (typeof widget[method] === 'function') {
+      await widget[method]()
+      return true
+    }
+  }
+
+  for (const method of ['open', 'toggle'] as const) {
+    if (typeof widget[method] === 'function') {
+      await widget[method]()
+    }
+  }
+
+  const clickable = widget.shadowRoot?.querySelector(widgetButtonSelectors.join(', '))
+  if (clickable) {
+    dispatchUserClick(clickable)
+    return true
+  }
+
+  return false
+}
+
 export default function Home() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [introVisible, setIntroVisible] = useState(true)
   const [introExiting, setIntroExiting] = useState(false)
+  const { startSession } = useConversationControls()
 
   useEffect(() => {
     const words = Array.from(document.querySelectorAll<HTMLElement>('.intro-word'))
@@ -81,6 +135,26 @@ export default function Home() {
     return () => cancelAnimationFrame(animFrame)
   }, [])
 
+  async function handleMeetNobu() {
+    try {
+      const widgetActivated = await openElevenLabsWidget()
+      if (widgetActivated) return
+    } catch (error) {
+      console.error('Unable to open ElevenLabs widget:', error)
+    }
+
+    try {
+      startSession({
+        agentId: AGENT_ID,
+        onError: (message) => {
+          console.error('ElevenLabs conversation error:', message)
+        },
+      })
+    } catch (error) {
+      console.error('Unable to start ElevenLabs conversation:', error)
+    }
+  }
+
   return (
     <>
       <style>{`
@@ -114,6 +188,7 @@ export default function Home() {
         .s-dot { width: 7px; height: 7px; border-radius: 50%; background: #34d399; animation: blink 2s infinite; }
         .s-text { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.6); }
         .meet-btn { margin-top: 20px; background: #7c3aed; color: #fff; border: 1.5px solid rgba(196,181,253,0.4); border-radius: 999px; padding: 13px 32px; font-size: 14px; font-weight: 500; cursor: pointer; }
+        .elevenlabs-widget-shell { position: fixed; right: 20px; bottom: 20px; z-index: 20; width: 1px; height: 1px; overflow: visible; opacity: 0.01; }
         @keyframes float { 0%,100% { transform: translateY(0px); } 50% { transform: translateY(-14px); } }
         @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
         @keyframes wave-out { 0% { transform: scale(0.9); opacity: 0.6; } 100% { transform: scale(1.6); opacity: 0; } }
@@ -168,18 +243,15 @@ export default function Home() {
           <span className="s-text">Nobu is here</span>
         </div>
 
-        <button className="meet-btn" onClick={() => {
-          const w = document.querySelector('elevenlabs-convai') as HTMLElement | null
-          if (w) w.click()
-        }}>Meet your Nobu →</button>
+        <button className="meet-btn" onClick={handleMeetNobu}>Meet your Nobu →</button>
 
         <div className="canvas-wrap">
           <canvas ref={canvasRef} width={260} height={40}></canvas>
         </div>
       </div>
 
-      <div style={{display:'none'}}>
-        <elevenlabs-convai agent-id="agent_0301knzm0v3efm3th0qnb84gkqrg"></elevenlabs-convai>
+      <div className="elevenlabs-widget-shell">
+        <elevenlabs-convai agent-id={AGENT_ID}></elevenlabs-convai>
       </div>
 
       <Script src="https://elevenlabs.io/convai-widget/index.js" strategy="afterInteractive" />
