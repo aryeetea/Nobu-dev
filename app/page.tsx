@@ -4,8 +4,17 @@ import {
   Conversation,
   type Conversation as ElevenLabsConversation,
 } from '@elevenlabs/client'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import Script from 'next/script'
-import { useEffect, useRef, useState } from 'react'
+import { type CSSProperties, useEffect, useRef, useState } from 'react'
+import {
+  DEFAULT_NOBU_SETTINGS,
+  getVibeInstruction,
+  hexToRgb,
+  loadNobuSettings,
+  type NobuSettings,
+} from './lib/nobu-settings'
 
 const AGENT_ID = 'agent_0301knzm0v3efm3th0qnb84gkqrg'
 
@@ -52,6 +61,54 @@ type ElevenLabsWidgetElement = HTMLElement & {
   toggle?: () => void | Promise<void>
 }
 
+type WakeListenStatus = 'idle' | 'listening' | 'blocked' | 'unsupported'
+
+type SpeechRecognitionAlternative = {
+  transcript: string
+}
+
+type SpeechRecognitionResult = {
+  readonly isFinal: boolean
+  readonly length: number
+  [index: number]: SpeechRecognitionAlternative
+}
+
+type SpeechRecognitionResultList = {
+  readonly length: number
+  [index: number]: SpeechRecognitionResult
+}
+
+type SpeechRecognitionEvent = Event & {
+  resultIndex: number
+  results: SpeechRecognitionResultList
+}
+
+type SpeechRecognitionErrorEvent = Event & {
+  error: string
+}
+
+type SpeechRecognition = EventTarget & {
+  continuous: boolean
+  interimResults: boolean
+  lang: string
+  maxAlternatives: number
+  onend: (() => void) | null
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null
+  onresult: ((event: SpeechRecognitionEvent) => void) | null
+  abort: () => void
+  start: () => void
+  stop: () => void
+}
+
+type SpeechRecognitionConstructor = {
+  new (): SpeechRecognition
+}
+
+type SpeechRecognitionWindow = Window & {
+  SpeechRecognition?: SpeechRecognitionConstructor
+  webkitSpeechRecognition?: SpeechRecognitionConstructor
+}
+
 const widgetButtonSelectors = [
   'button',
   '[role="button"]',
@@ -95,12 +152,152 @@ async function openElevenLabsWidget() {
   return false
 }
 
+function transcriptContainsWakeWord(transcript: string, wakeWord: string) {
+  const escapedWakeWord = wakeWord.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  if (!escapedWakeWord) return false
+
+  return new RegExp(`(^|[^\\p{L}\\p{N}])${escapedWakeWord}([^\\p{L}\\p{N}]|$)`, 'iu')
+    .test(transcript)
+}
+
 export default function Home() {
+  const router = useRouter()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const conversationRef = useRef<ElevenLabsConversation | null>(null)
+  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const startConversationRef = useRef<(() => Promise<void>) | null>(null)
+  const shouldListenForWakeRef = useRef(true)
+  const wakeStartingRef = useRef(false)
+  const callStatusRef = useRef<'idle' | 'connecting' | 'connected'>('idle')
+  const settingsRef = useRef<NobuSettings>(DEFAULT_NOBU_SETTINGS)
+  const [settings, setSettings] = useState<NobuSettings>(DEFAULT_NOBU_SETTINGS)
+  const nobuNameRef = useRef(DEFAULT_NOBU_SETTINGS.name)
   const [introVisible, setIntroVisible] = useState(true)
   const [introExiting, setIntroExiting] = useState(false)
   const [callStatus, setCallStatus] = useState<'idle' | 'connecting' | 'connected'>('idle')
+  const [wakeListenStatus, setWakeListenStatus] = useState<WakeListenStatus>('idle')
+  const orbStyle = {
+    '--nobu-color': settings.color,
+    '--nobu-rgb': hexToRgb(settings.color),
+  } as CSSProperties
+
+  function stopWakeListening() {
+    shouldListenForWakeRef.current = false
+    recognitionRef.current?.abort()
+    setWakeListenStatus('idle')
+  }
+
+  function startWakeListening() {
+    if (!recognitionRef.current || wakeStartingRef.current || callStatusRef.current !== 'idle') {
+      return
+    }
+
+    shouldListenForWakeRef.current = true
+    wakeStartingRef.current = true
+
+    try {
+      recognitionRef.current.start()
+      setWakeListenStatus('listening')
+    } catch {
+      wakeStartingRef.current = false
+    }
+  }
+
+  async function startNobuConversation() {
+    if (callStatusRef.current !== 'idle' || conversationRef.current?.isOpen()) {
+      return
+    }
+
+    stopWakeListening()
+    callStatusRef.current = 'connecting'
+    setCallStatus('connecting')
+
+    try {
+      conversationRef.current = await Conversation.startSession({
+        agentId: AGENT_ID,
+        connectionType: 'websocket',
+        overrides: {
+          agent: {
+            firstMessage: `Hey, I’m ${settingsRef.current.name}. I’m here with you. What should we work through first?`,
+            prompt: {
+              prompt: `${NOBU_PERSONA}\n${getVibeInstruction(settingsRef.current.vibe)}`,
+            },
+          },
+          tts: {
+            voiceId: settingsRef.current.voiceId,
+            stability: 0.72,
+            similarityBoost: 0.82,
+            speed: 0.94,
+          },
+        },
+        onConnect: () => {
+          callStatusRef.current = 'connected'
+          setCallStatus('connected')
+        },
+        onDisconnect: () => {
+          conversationRef.current = null
+          callStatusRef.current = 'idle'
+          setCallStatus('idle')
+          startWakeListening()
+        },
+        onError: (message) => {
+          console.error('ElevenLabs conversation error:', message)
+          conversationRef.current = null
+          callStatusRef.current = 'idle'
+          setCallStatus('idle')
+          startWakeListening()
+        },
+      })
+    } catch (error) {
+      console.error('Unable to start ElevenLabs conversation:', error)
+      conversationRef.current = null
+      callStatusRef.current = 'idle'
+      setCallStatus('idle')
+      startWakeListening()
+      await openElevenLabsWidget()
+    }
+  }
+
+  useEffect(() => {
+    startConversationRef.current = startNobuConversation
+  })
+
+  useEffect(() => {
+    const applySettings = (nextSettings: NobuSettings) => {
+      settingsRef.current = nextSettings
+      nobuNameRef.current = nextSettings.name
+      setSettings(nextSettings)
+    }
+
+    const loadSettings = () => {
+      const nextSettings = loadNobuSettings()
+      applySettings(nextSettings)
+
+      if (!nextSettings.hasCompletedOnboarding) {
+        router.replace('/onboarding')
+      }
+    }
+
+    const handleSettingsChange = (event: Event) => {
+      const detail = (event as CustomEvent<NobuSettings>).detail
+      applySettings(detail ?? loadNobuSettings())
+    }
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === 'nobuSettings' || event.key === 'nobuName') {
+        applySettings(loadNobuSettings())
+      }
+    }
+
+    queueMicrotask(loadSettings)
+    window.addEventListener('nobu-settings-change', handleSettingsChange)
+    window.addEventListener('storage', handleStorage)
+
+    return () => {
+      window.removeEventListener('nobu-settings-change', handleSettingsChange)
+      window.removeEventListener('storage', handleStorage)
+    }
+  }, [router])
 
   useEffect(() => {
     const words = Array.from(document.querySelectorAll<HTMLElement>('.intro-word'))
@@ -134,6 +331,76 @@ export default function Home() {
 
     return () => {
       cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!loadNobuSettings().hasCompletedOnboarding) {
+      return
+    }
+
+    const SpeechRecognitionConstructor =
+      (window as SpeechRecognitionWindow).SpeechRecognition
+      ?? (window as SpeechRecognitionWindow).webkitSpeechRecognition
+
+    if (!SpeechRecognitionConstructor) {
+      queueMicrotask(() => setWakeListenStatus('unsupported'))
+      return
+    }
+
+    const recognition = new SpeechRecognitionConstructor()
+    recognition.continuous = true
+    recognition.interimResults = true
+    recognition.lang = 'en-US'
+    recognition.maxAlternatives = 1
+
+    recognition.onresult = (event) => {
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const transcript = event.results[i]?.[0]?.transcript ?? ''
+
+        if (transcriptContainsWakeWord(transcript, nobuNameRef.current)) {
+          shouldListenForWakeRef.current = false
+          recognition.abort()
+          setWakeListenStatus('idle')
+          void startConversationRef.current?.()
+          break
+        }
+      }
+    }
+
+    recognition.onerror = (event) => {
+      wakeStartingRef.current = false
+
+      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        shouldListenForWakeRef.current = false
+        setWakeListenStatus('blocked')
+        return
+      }
+
+      setWakeListenStatus('idle')
+    }
+
+    recognition.onend = () => {
+      wakeStartingRef.current = false
+
+      if (!shouldListenForWakeRef.current || callStatusRef.current !== 'idle') {
+        return
+      }
+
+      window.setTimeout(() => {
+        if (shouldListenForWakeRef.current && callStatusRef.current === 'idle') {
+          startWakeListening()
+        }
+      }, 450)
+    }
+
+    recognitionRef.current = recognition
+    queueMicrotask(startWakeListening)
+
+    return () => {
+      shouldListenForWakeRef.current = false
+      recognition.abort()
+      recognitionRef.current = null
     }
   }, [])
 
@@ -182,47 +449,13 @@ export default function Home() {
     if (callStatus === 'connected' || conversationRef.current?.isOpen()) {
       await conversationRef.current?.endSession()
       conversationRef.current = null
+      callStatusRef.current = 'idle'
       setCallStatus('idle')
+      startWakeListening()
       return
     }
 
-    setCallStatus('connecting')
-
-    try {
-      conversationRef.current = await Conversation.startSession({
-        agentId: AGENT_ID,
-        connectionType: 'websocket',
-        overrides: {
-          agent: {
-            firstMessage: 'Hey, I’m Nobu. I’m here with you. What should we work through first?',
-            prompt: {
-              prompt: NOBU_PERSONA,
-            },
-          },
-          tts: {
-            stability: 0.72,
-            similarityBoost: 0.82,
-            speed: 0.94,
-          },
-        },
-        onConnect: () => {
-          setCallStatus('connected')
-        },
-        onDisconnect: () => {
-          conversationRef.current = null
-          setCallStatus('idle')
-        },
-        onError: (message) => {
-          console.error('ElevenLabs conversation error:', message)
-          conversationRef.current = null
-          setCallStatus('idle')
-        },
-      })
-    } catch (error) {
-      console.error('Unable to start ElevenLabs conversation:', error)
-      setCallStatus('idle')
-      await openElevenLabsWidget()
-    }
+    await startNobuConversation()
   }
 
   return (
@@ -240,15 +473,16 @@ export default function Home() {
         .universe { width: 100%; min-height: 100vh; background: #0d0014; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; }
         .stars-bg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
         .orb-system { position: relative; z-index: 2; width: 320px; height: 320px; display: flex; align-items: center; justify-content: center; pointer-events: none; }
-        .atmo { position: absolute; width: 260px; height: 260px; border-radius: 50%; background: radial-gradient(circle at 50% 50%, transparent 38%, rgba(167,139,250,0.08) 60%, rgba(124,58,237,0.15) 75%, transparent 100%); animation: breathe 4s ease-in-out infinite; }
-        .orb { width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(circle at 32% 30%, #c4b5fd 0%, #7c3aed 40%, #4c1d95 70%, #2e1065 100%); border: 2.5px solid rgba(196,181,253,0.4); position: relative; z-index: 3; animation: float 5s ease-in-out infinite; overflow: hidden; }
+        .atmo { position: absolute; width: 260px; height: 260px; border-radius: 50%; background: radial-gradient(circle at 50% 50%, transparent 38%, rgba(var(--nobu-rgb),0.08) 60%, rgba(var(--nobu-rgb),0.18) 75%, transparent 100%); animation: breathe 4s ease-in-out infinite; }
+        .orb { width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(circle at 32% 30%, #ffffff 0%, var(--nobu-color) 42%, #1a062f 100%); border: 2.5px solid rgba(var(--nobu-rgb),0.42); position: relative; z-index: 3; animation: float 5s ease-in-out infinite; overflow: hidden; box-shadow: 0 0 44px rgba(var(--nobu-rgb),0.28); }
+        .universe.awake .orb { box-shadow: 0 0 80px rgba(var(--nobu-rgb),0.45); animation-duration: 3s; }
         .orb-shine { position: absolute; top: 20px; left: 24px; width: 55px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.28); transform: rotate(-35deg); filter: blur(2px); }
         .orb-shine2 { position: absolute; top: 36px; left: 40px; width: 20px; height: 12px; border-radius: 50%; background: rgba(255,255,255,0.18); transform: rotate(-35deg); }
-        .orb-glow { position: absolute; bottom: 30px; right: 28px; width: 40px; height: 40px; border-radius: 50%; background: rgba(219,39,119,0.25); filter: blur(8px); }
+        .orb-glow { position: absolute; bottom: 30px; right: 28px; width: 40px; height: 40px; border-radius: 50%; background: rgba(var(--nobu-rgb),0.32); filter: blur(8px); }
         .ring-wrap { position: absolute; width: 290px; height: 290px; z-index: 2; }
-        .ring { position: absolute; top: 50%; left: 50%; width: 290px; height: 60px; margin-left: -145px; margin-top: -30px; border-radius: 50%; border: 1.5px solid rgba(196,181,253,0.25); transform: rotateX(75deg); }
-        .ring-inner { position: absolute; top: 50%; left: 50%; width: 240px; height: 46px; margin-left: -120px; margin-top: -23px; border-radius: 50%; border: 1px solid rgba(219,39,119,0.2); transform: rotateX(75deg); }
-        .wave-ring { position: absolute; border-radius: 50%; border: 1.5px solid rgba(167,139,250,0.3); animation: wave-out 3s ease-out infinite; opacity: 0; }
+        .ring { position: absolute; top: 50%; left: 50%; width: 290px; height: 60px; margin-left: -145px; margin-top: -30px; border-radius: 50%; border: 1.5px solid rgba(var(--nobu-rgb),0.28); transform: rotateX(75deg); }
+        .ring-inner { position: absolute; top: 50%; left: 50%; width: 240px; height: 46px; margin-left: -120px; margin-top: -23px; border-radius: 50%; border: 1px solid rgba(var(--nobu-rgb),0.24); transform: rotateX(75deg); }
+        .wave-ring { position: absolute; border-radius: 50%; border: 1.5px solid rgba(var(--nobu-rgb),0.3); animation: wave-out 3s ease-out infinite; opacity: 0; }
         .wave-ring:nth-child(1) { width: 210px; height: 210px; animation-delay: 0s; }
         .wave-ring:nth-child(2) { width: 240px; height: 240px; animation-delay: 0.6s; }
         .wave-ring:nth-child(3) { width: 270px; height: 270px; animation-delay: 1.2s; }
@@ -257,9 +491,15 @@ export default function Home() {
         .status { display: flex; align-items: center; gap: 7px; margin-top: 24px; position: relative; z-index: 5; }
         .s-dot { width: 7px; height: 7px; border-radius: 50%; background: #34d399; animation: blink 2s infinite; }
         .s-text { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.6); }
-        .meet-btn { margin-top: 20px; background: #7c3aed; color: #fff; border: 1.5px solid rgba(196,181,253,0.4); border-radius: 999px; padding: 13px 32px; font-size: 14px; font-weight: 500; cursor: pointer; position: relative; z-index: 6; pointer-events: auto; }
+        .meet-btn { margin-top: 20px; background: var(--nobu-color); color: #fff; border: 1.5px solid rgba(var(--nobu-rgb),0.4); border-radius: 999px; padding: 13px 32px; font-size: 14px; font-weight: 500; cursor: pointer; position: relative; z-index: 6; pointer-events: auto; }
         .meet-btn.connected { background: #db2777; border-color: rgba(249,168,212,0.5); }
         .meet-btn:disabled { cursor: wait; opacity: 0.72; }
+        .wake-indicator { position: fixed; top: 18px; left: 18px; z-index: 10; display: flex; align-items: center; gap: 8px; border: 1px solid rgba(196,181,253,0.18); border-radius: 999px; background: rgba(13,0,20,0.46); color: rgba(255,255,255,0.58); padding: 7px 10px; font-size: 11px; font-weight: 500; backdrop-filter: blur(10px); }
+        .settings-link { position: fixed; top: 18px; right: 18px; z-index: 10; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: 1px solid rgba(196,181,253,0.18); border-radius: 999px; background: rgba(13,0,20,0.46); color: rgba(255,255,255,0.66); text-decoration: none; backdrop-filter: blur(10px); }
+        .settings-link:hover { color: #fff; border-color: rgba(var(--nobu-rgb),0.45); }
+        .wake-indicator-dot { width: 6px; height: 6px; border-radius: 999px; background: #34d399; box-shadow: 0 0 10px rgba(52,211,153,0.6); }
+        .wake-indicator.blocked .wake-indicator-dot,
+        .wake-indicator.unsupported .wake-indicator-dot { background: #db2777; box-shadow: 0 0 10px rgba(219,39,119,0.48); }
         .elevenlabs-widget-shell { position: fixed; right: 20px; bottom: 20px; z-index: 20; width: 1px; height: 1px; overflow: visible; opacity: 0.01; }
         @keyframes float { 0%,100% { transform: translateY(0px); } 50% { transform: translateY(-14px); } }
         @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
@@ -283,7 +523,22 @@ export default function Home() {
         </div>
       )}
 
-      <div className="universe">
+      <div className={`universe ${callStatus !== 'idle' ? 'awake' : ''}`} style={orbStyle}>
+        <Link aria-label="Open Nobu settings" className="settings-link" href="/settings">
+          <svg aria-hidden="true" fill="none" height="17" viewBox="0 0 24 24" width="17">
+            <path
+              d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z"
+              stroke="currentColor"
+              strokeWidth="1.8"
+            />
+            <path
+              d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.5-2-3.4-2.4 1a7.8 7.8 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.6A7.8 7.8 0 0 0 7 6.6l-2.4-1-2 3.4 2 1.5a7.6 7.6 0 0 0 0 3l-2 1.5 2 3.4 2.4-1a7.8 7.8 0 0 0 2.6 1.5l.4 2.6h4l.4-2.6a7.8 7.8 0 0 0 2.6-1.5l2.4 1 2-3.4-2-1.5Z"
+              stroke="currentColor"
+              strokeLinejoin="round"
+              strokeWidth="1.8"
+            />
+          </svg>
+        </Link>
         <svg className="stars-bg" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
           <circle cx="80" cy="60" r="1" fill="white" opacity="0.6"><animate attributeName="opacity" values="0.6;0.1;0.6" dur="3s" repeatCount="indefinite"/></circle>
           <circle cx="640" cy="40" r="1.2" fill="white" opacity="0.5"><animate attributeName="opacity" values="0.5;0.1;0.5" dur="2.5s" repeatCount="indefinite"/></circle>
@@ -292,8 +547,8 @@ export default function Home() {
           <circle cx="400" cy="30" r="0.8" fill="white" opacity="0.5"><animate attributeName="opacity" values="0.5;0.1;0.5" dur="3.5s" repeatCount="indefinite"/></circle>
           <circle cx="700" cy="300" r="1" fill="white" opacity="0.4"><animate attributeName="opacity" values="0.4;0.1;0.4" dur="2.8s" repeatCount="indefinite"/></circle>
           <circle cx="60" cy="350" r="0.8" fill="white" opacity="0.6"><animate attributeName="opacity" values="0.6;0.1;0.6" dur="3.2s" repeatCount="indefinite"/></circle>
-          <circle cx="200" cy="450" r="0.8" fill="#c4b5fd" opacity="0.5"><animate attributeName="opacity" values="0.5;0.1;0.5" dur="2.3s" repeatCount="indefinite"/></circle>
-          <circle cx="560" cy="470" r="1" fill="#f9a8d4" opacity="0.4"><animate attributeName="opacity" values="0.4;0.1;0.4" dur="3.7s" repeatCount="indefinite"/></circle>
+          <circle cx="200" cy="450" r="0.8" fill="var(--nobu-color)" opacity="0.5"><animate attributeName="opacity" values="0.5;0.1;0.5" dur="2.3s" repeatCount="indefinite"/></circle>
+          <circle cx="560" cy="470" r="1" fill="var(--nobu-color)" opacity="0.4"><animate attributeName="opacity" values="0.4;0.1;0.4" dur="3.7s" repeatCount="indefinite"/></circle>
         </svg>
 
         <div className="orb-system">
@@ -310,9 +565,9 @@ export default function Home() {
             <div className="orb-shine2"></div>
             <div className="orb-glow"></div>
           </div>
-          <div className="particle" style={{width:'5px',height:'5px',background:'#f9a8d4',animationDuration:'8s',boxShadow:'0 0 4px #f9a8d4'}}></div>
-          <div className="particle" style={{width:'4px',height:'4px',background:'#6ee7b7',animationDuration:'12s',animationDelay:'-3s',boxShadow:'0 0 4px #6ee7b7'}}></div>
-          <div className="particle" style={{width:'3px',height:'3px',background:'#c4b5fd',animationDuration:'10s',animationDelay:'-6s',boxShadow:'0 0 3px #c4b5fd'}}></div>
+          <div className="particle" style={{width:'5px',height:'5px',background:'var(--nobu-color)',animationDuration:'8s',boxShadow:'0 0 4px var(--nobu-color)'}}></div>
+          <div className="particle" style={{width:'4px',height:'4px',background:'var(--nobu-color)',animationDuration:'12s',animationDelay:'-3s',boxShadow:'0 0 4px var(--nobu-color)'}}></div>
+          <div className="particle" style={{width:'3px',height:'3px',background:'var(--nobu-color)',animationDuration:'10s',animationDelay:'-6s',boxShadow:'0 0 3px var(--nobu-color)'}}></div>
         </div>
 
         <div className="status">
@@ -335,6 +590,21 @@ export default function Home() {
         <div className="canvas-wrap">
           <canvas ref={canvasRef} width={260} height={40}></canvas>
         </div>
+      </div>
+
+      <div className={`wake-indicator ${wakeListenStatus}`}>
+        <span className="wake-indicator-dot" />
+        <span>
+          {wakeListenStatus === 'listening'
+            ? `Listening for "${settings.name}"`
+            : wakeListenStatus === 'blocked'
+              ? 'Wake word off'
+              : wakeListenStatus === 'unsupported'
+                ? 'Wake word unavailable'
+                : callStatus === 'idle'
+                  ? 'Wake word paused'
+                  : 'In conversation'}
+        </span>
       </div>
 
       <div className="elevenlabs-widget-shell">
