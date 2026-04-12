@@ -14,29 +14,6 @@ import {
   type NobuVoiceId,
 } from '../lib/nobu-settings'
 
-const previewText = 'This is how I can sound when I am with you.'
-
-async function previewVoice(voiceId: NobuVoiceId) {
-  try {
-    const response = await fetch('/api/voice-preview', {
-      body: JSON.stringify({ text: previewText, voiceId }),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'POST',
-    })
-
-    if (!response.ok) throw new Error('Preview failed')
-
-    const blob = await response.blob()
-    const audio = new Audio(URL.createObjectURL(blob))
-    audio.play()
-  } catch {
-    const fallback = new SpeechSynthesisUtterance(previewText)
-    fallback.pitch = voiceId === 'eXpIbVcVbLo8ZJQDlDnl' ? 1.08 : 0.86
-    fallback.rate = 0.94
-    window.speechSynthesis.speak(fallback)
-  }
-}
-
 export default function OnboardingPage() {
   const router = useRouter()
   const [step, setStep] = useState(0)
@@ -83,7 +60,6 @@ export default function OnboardingPage() {
         .choice-card:hover, .choice-card.selected { border-color: rgba(var(--nobu-rgb),0.72); background: rgba(var(--nobu-rgb),0.13); transform: translateY(-2px); }
         .choice-card h2 { font-size: 24px; margin-bottom: 10px; }
         .choice-card p { color: rgba(255,255,255,0.56); font-size: 13px; line-height: 1.6; }
-        .play-btn { margin-top: 18px; border: 1px solid rgba(255,255,255,0.16); border-radius: 999px; background: rgba(255,255,255,0.08); color: #fff; cursor: pointer; padding: 9px 14px; }
         .color-layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); align-items: center; gap: 38px; width: min(780px, 100%); }
         .preview-orb { position: relative; width: 210px; height: 210px; border-radius: 999px; background: radial-gradient(circle at 32% 30%, #fff 0%, var(--nobu-color) 42%, #17051f 100%); border: 2px solid rgba(var(--nobu-rgb),0.5); box-shadow: 0 0 76px rgba(var(--nobu-rgb),0.52); overflow: hidden; }
         .preview-orb::before { content: ""; position: absolute; top: 24px; left: 28px; width: 58px; height: 34px; border-radius: 999px; background: rgba(255,255,255,0.28); filter: blur(2px); transform: rotate(-35deg); }
@@ -134,15 +110,6 @@ export default function OnboardingPage() {
               >
                 <h2>{option.label}</h2>
                 <p>{option.description}</p>
-                <span
-                  className="play-btn"
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    void previewVoice(option.voiceId)
-                  }}
-                >
-                  Play preview
-                </span>
               </button>
             ))}
           </div>
