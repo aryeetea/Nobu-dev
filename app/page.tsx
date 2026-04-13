@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import {
+  DEFAULT_NOBU_SETTINGS,
   getVibeInstruction,
   hexToRgb,
   loadNobuSettings,
@@ -122,21 +123,8 @@ export default function Home() {
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const shouldListenForWakeRef = useRef(true)
   const wakeStartingRef = useRef(false)
-  const [settings, setSettings] = useState<NobuSettings>(loadNobuSettings)
-  const [character] = useState<'female' | 'male'>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('nobu-settings')
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored)
-          if (parsed.character === 'male' || parsed.character === 'female') {
-            return parsed.character
-          }
-        } catch {}
-      }
-    }
-    return 'female'
-  })
+  const [settings, setSettings] = useState<NobuSettings>(DEFAULT_NOBU_SETTINGS)
+  const [character, setCharacter] = useState<'female' | 'male'>('female')
   const [introVisible, setIntroVisible] = useState(true)
   const [introExiting, setIntroExiting] = useState(false)
   const [wakeListenStatus, setWakeListenStatus] = useState<WakeListenStatus>('idle')
@@ -185,7 +173,9 @@ export default function Home() {
 
   useEffect(() => {
     function syncSettings() {
-      setSettings(loadNobuSettings())
+      const nextSettings = loadNobuSettings()
+      setSettings(nextSettings)
+      setCharacter(nextSettings.voiceId === '5kMbtRSEKIkRZSdXxrZg' ? 'male' : 'female')
     }
 
     syncSettings()
@@ -360,7 +350,7 @@ export default function Home() {
         .intro-rest.purple { color: #7c3aed; }
         .intro-rest.green { color: #059669; }
         .intro-rest.pink { color: #db2777; }
-        .universe { --nobu-color: #7c3aed; --nobu-rgb: 124,58,237; width: 100%; min-height: 100vh; background: #0d0014; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+        .universe { width: 100%; min-height: 100vh; background: #0d0014; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; }
         .stars-bg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
         .orb-system { position: relative; z-index: 2; width: 320px; height: 320px; display: flex; align-items: center; justify-content: center; pointer-events: none; }
         .atmo { position: absolute; width: 260px; height: 260px; border-radius: 50%; background: radial-gradient(circle at 50% 50%, transparent 38%, rgba(var(--nobu-rgb),0.08) 60%, rgba(var(--nobu-rgb),0.18) 75%, transparent 100%); animation: breathe 4s ease-in-out infinite; }

@@ -6,8 +6,8 @@ import { useEffect, useRef } from 'react'
 const CUBISM_CORE_SRC = '/live2d/live2dcubismcore.min.js'
 
 const MODEL_PATHS = {
-  female: '/models/alexia/Alexia.model3.json',
-  male: '/models/asuka/Asuka.model3.json',
+  female: '/models/Alexia/Alexia.model3.json',
+  male: '/models/ASUKA/Asuka.model3.json',
 }
 
 type Props = {
@@ -105,41 +105,44 @@ export default function NobuCharacter({ character, isSpeaking, isListening }: Pr
     let cancelled = false
 
     async function loadModel() {
-      await loadCubismCore()
-      if (cancelled || !canvasRef.current) return
+      try {
+        await loadCubismCore()
+        if (cancelled || !canvasRef.current) return
 
-      if (!canvasRef.current) return
-      const PIXI = (await import('pixi.js')).default as PixiModule
-      const { Live2DModel } = (await import('@guansss/pixi-live2d-display')) as Live2DModule
-      if (cancelled || !canvasRef.current) return
+        const PIXI = await import('pixi.js') as unknown as PixiModule
+        const { Live2DModel } = (await import('@guansss/pixi-live2d-display/cubism4')) as Live2DModule
+        if (cancelled || !canvasRef.current) return
 
-      canvasRef.current.innerHTML = ''
-      const app = new PIXI.Application({
-        width: window.innerWidth,
-        height: window.innerHeight,
-        transparent: true,
-        backgroundAlpha: 0,
-        resizeTo: window,
-      })
-      appRef.current = app
-      canvasRef.current.appendChild(app.view)
-      const model = await Live2DModel.from(MODEL_PATHS[character])
-      if (cancelled) {
-        app.destroy(true, { children: true })
-        return
-      }
+        canvasRef.current.innerHTML = ''
+        const app = new PIXI.Application({
+          width: window.innerWidth,
+          height: window.innerHeight,
+          transparent: true,
+          backgroundAlpha: 0,
+          resizeTo: window,
+        })
+        appRef.current = app
+        canvasRef.current.appendChild(app.view)
+        const model = await Live2DModel.from(MODEL_PATHS[character])
+        if (cancelled) {
+          app.destroy(true, { children: true })
+          return
+        }
 
-      model.anchor.set(0.5, 1)
-      model.x = app.screen.width / 2
-      model.y = app.screen.height * 0.95
-      model.scale.set(Math.min(app.screen.width / 1200, app.screen.height / 1800))
-      app.stage.addChild(model)
-      modelRef.current = model
-      // Idle motion
-      model.motion('Idle')
-      idleTimer = setInterval(() => {
+        model.anchor.set(0.5, 1)
+        model.x = app.screen.width / 2
+        model.y = app.screen.height * 0.95
+        model.scale.set(Math.min(app.screen.width / 1200, app.screen.height / 1800))
+        app.stage.addChild(model)
+        modelRef.current = model
+        // Idle motion
         model.motion('Idle')
-      }, 12000)
+        idleTimer = setInterval(() => {
+          model.motion('Idle')
+        }, 12000)
+      } catch (error) {
+        console.error('Unable to load Nobu Live2D model:', error)
+      }
     }
     loadModel()
     return () => {

@@ -1,7 +1,25 @@
 const CACHE_NAME = 'nobu-pwa-v1'
 const PRECACHE_URLS = ['/', '/manifest.webmanifest', '/icon', '/apple-icon']
+const IS_LOCAL_DEV =
+  self.location.hostname === 'localhost' ||
+  self.location.hostname === '127.0.0.1' ||
+  self.location.hostname === '0.0.0.0'
+
+async function clearNobuCaches() {
+  const cacheNames = await caches.keys()
+  await Promise.all(
+    cacheNames
+      .filter((cacheName) => cacheName.startsWith('nobu-'))
+      .map((cacheName) => caches.delete(cacheName))
+  )
+}
 
 self.addEventListener('install', (event) => {
+  if (IS_LOCAL_DEV) {
+    event.waitUntil(clearNobuCaches().then(() => self.skipWaiting()))
+    return
+  }
+
   event.waitUntil(
     caches
       .open(CACHE_NAME)
@@ -11,6 +29,16 @@ self.addEventListener('install', (event) => {
 })
 
 self.addEventListener('activate', (event) => {
+  if (IS_LOCAL_DEV) {
+    event.waitUntil(
+      clearNobuCaches()
+        .then(() => self.registration.unregister())
+        .then(() => self.clients.matchAll())
+        .then((clients) => Promise.all(clients.map((client) => client.navigate(client.url))))
+    )
+    return
+  }
+
   event.waitUntil(
     caches
       .keys()
@@ -26,11 +54,26 @@ self.addEventListener('activate', (event) => {
 })
 
 self.addEventListener('fetch', (event) => {
+  if (IS_LOCAL_DEV) {
+    event.respondWith(fetch(event.request))
+    return
+  }
+
   const { request } = event
 
   if (request.method !== 'GET') return
 
   const requestUrl = new URL(request.url)
+
+  if (
+    requestUrl.pathname.startsWith('/_next/') ||
+    requestUrl.pathname.startsWith('/__nextjs') ||
+    request.destination === 'script' ||
+    request.destination === 'style'
+  ) {
+    event.respondWith(fetch(request))
+    return
+  }
 
   if (request.mode === 'navigate') {
     event.respondWith(

@@ -4,7 +4,7 @@
 
 import { useEffect, useRef } from 'react'
 
-// You need to provide a Live2D model JSON file and assets (e.g., public/live2d/nobu/model.json)
+// You need to provide a Cubism 4 model JSON file and assets.
 // See: https://github.com/guansss/pixi-live2d-display
 
 type PixiApp = {
@@ -41,8 +41,8 @@ export default function Nobu2D({ expression, width = 320, height = 480 }: { expr
     let app: PixiApp | undefined
 
     async function loadModel() {
-      const PIXI = (await import('pixi.js')).default as PixiModule
-      const { Live2DModel } = (await import('@guansss/pixi-live2d-display')) as Live2DModule
+      const PIXI = await import('pixi.js') as unknown as PixiModule
+      const { Live2DModel } = (await import('@guansss/pixi-live2d-display/cubism4')) as Live2DModule
       app = new PIXI.Application({
         view: undefined,
         width,
@@ -53,7 +53,7 @@ export default function Nobu2D({ expression, width = 320, height = 480 }: { expr
       if (!canvasRef.current) return
       canvasRef.current.innerHTML = ''
       canvasRef.current.appendChild(app.view)
-      const model = await Live2DModel.from('/live2d/nobu/model.json')
+      const model = await Live2DModel.from('/models/Alexia/Alexia.model3.json')
       model.scale.set(0.5)
       model.x = width / 2
       model.y = height * 0.9
