@@ -13,6 +13,7 @@ import {
 } from './lib/nobu-settings'
 import { useSession } from 'next-auth/react'
 import NobuCharacter from './components/NobuCharacter'
+import NobuRoom from './components/NobuRoom'
 
 const AGENT_ID = 'agent_0301knzm0v3efm3th0qnb84gkqrg'
 
@@ -128,6 +129,7 @@ export default function Home() {
   const [introVisible, setIntroVisible] = useState(true)
   const [introExiting, setIntroExiting] = useState(false)
   const [wakeListenStatus, setWakeListenStatus] = useState<WakeListenStatus>('idle')
+  const [characterLoadRequested, setCharacterLoadRequested] = useState(false)
 
   function stopWakeListening() {
     shouldListenForWakeRef.current = false
@@ -330,6 +332,7 @@ export default function Home() {
 
   async function handleMeetNobu() {
     if (status === 'connecting') return
+    setCharacterLoadRequested(true)
     if (status === 'connected') {
       await endSession()
       startWakeListening()
@@ -405,6 +408,7 @@ export default function Home() {
 
       {/* NobuCharacter replaces orb system */}
       <div className={`universe${status === 'connected' ? ' awake' : ''}`} ref={universeRef}>
+        <NobuRoom />
         <Link aria-label="Open Nobu settings" className="settings-link" href="/settings">
           <svg aria-hidden="true" fill="none" height="17" viewBox="0 0 24 24" width="17">
             <path
@@ -432,7 +436,12 @@ export default function Home() {
           <circle cx="560" cy="470" r="1" fill="var(--nobu-color)" opacity="0.4"><animate attributeName="opacity" values="0.4;0.1;0.4" dur="3.7s" repeatCount="indefinite"/></circle>
         </svg>
         <div style={{ width: '100vw', height: '90vh', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 2 }}>
-          <NobuCharacter character={character} isSpeaking={isSpeaking} isListening={isListening} />
+          <NobuCharacter
+            character={character}
+            isListening={isListening}
+            isSpeaking={isSpeaking}
+            shouldLoad={characterLoadRequested || status === 'connecting' || status === 'connected'}
+          />
         </div>
         <div className="status">
           <div className="s-dot"></div>

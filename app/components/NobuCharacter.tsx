@@ -14,6 +14,7 @@ type Props = {
   character: 'female' | 'male'
   isSpeaking: boolean
   isListening: boolean
+  shouldLoad?: boolean
 }
 
 type PixiApplication = {
@@ -53,6 +54,16 @@ type Live2DModule = {
   Live2DModel: {
     from: (path: string) => Promise<NobuLive2DModel>
   }
+}
+
+type IdleDeadline = {
+  didTimeout: boolean
+  timeRemaining: () => number
+}
+
+type IdleWindow = Window & {
+  requestIdleCallback?: (callback: (deadline: IdleDeadline) => void, options?: { timeout?: number }) => number
+  cancelIdleCallback?: (handle: number) => void
 }
 
 let cubismCoreLoadPromise: Promise<void> | null = null
@@ -95,22 +106,34 @@ function loadCubismCore() {
   return cubismCoreLoadPromise
 }
 
-export default function NobuCharacter({ character, isSpeaking, isListening }: Props) {
+export default function NobuCharacter({ character, isSpeaking, isListening, shouldLoad = false }: Props) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const modelRef = useRef<NobuLive2DModel | null>(null)
   const appRef = useRef<PixiApplication | null>(null)
+  const hasLoadedRef = useRef(false)
+  const shouldLoadRef = useRef(shouldLoad)
+
+  useEffect(() => {
+    shouldLoadRef.current = shouldLoad
+  }, [shouldLoad])
 
   useEffect(() => {
     let idleTimer: ReturnType<typeof setInterval> | undefined
+    let observer: IntersectionObserver | undefined
+    let idleHandle: number | undefined
+    let fallbackTimer: ReturnType<typeof setTimeout> | undefined
     let cancelled = false
 
     async function loadModel() {
+      if (hasLoadedRef.current) return
+      hasLoadedRef.current = true
+
       try {
         await loadCubismCore()
         if (cancelled || !canvasRef.current) return
 
         const PIXI = await import('pixi.js') as unknown as PixiModule
-        const { Live2DModel } = (await import('@guansss/pixi-live2d-display/cubism4')) as Live2DModule
+        const { Live2DModel } = (await import('pixi-live2d-display/lib/cubism4')) as Live2DModule
         if (cancelled || !canvasRef.current) return
 
         canvasRef.current.innerHTML = ''
@@ -141,18 +164,54 @@ export default function NobuCharacter({ character, isSpeaking, isListening }: Pr
           model.motion('Idle')
         }, 12000)
       } catch (error) {
+        hasLoadedRef.current = false
         console.error('Unable to load Nobu Live2D model:', error)
       }
     }
-    loadModel()
+
+    function loadWhenIdle() {
+      if (shouldLoadRef.current) {
+        loadModel()
+        return
+      }
+
+      const idleWindow = window as IdleWindow
+      if (idleWindow.requestIdleCallback) {
+        idleHandle = idleWindow.requestIdleCallback(() => loadModel(), { timeout: 2500 })
+        return
+      }
+
+      fallbackTimer = setTimeout(loadModel, 900)
+    }
+
+    if (shouldLoad) {
+      loadModel()
+    } else if ('IntersectionObserver' in window && canvasRef.current) {
+      observer = new IntersectionObserver((entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          observer?.disconnect()
+          loadWhenIdle()
+        }
+      }, { rootMargin: '160px' })
+      observer.observe(canvasRef.current)
+    } else {
+      loadWhenIdle()
+    }
+
     return () => {
       cancelled = true
+      observer?.disconnect()
+      if (idleHandle !== undefined) {
+        ;(window as IdleWindow).cancelIdleCallback?.(idleHandle)
+      }
+      if (fallbackTimer) clearTimeout(fallbackTimer)
       if (idleTimer) clearInterval(idleTimer)
       if (appRef.current) appRef.current.destroy(true, { children: true })
       appRef.current = null
       modelRef.current = null
+      hasLoadedRef.current = false
     }
-  }, [character])
+  }, [character, shouldLoad])
 
   // Animate mouth and listening
   useEffect(() => {
