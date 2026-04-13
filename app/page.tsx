@@ -281,9 +281,9 @@ export default function Home() {
     }
   }, [])
 
-  // Wake word detection logic (simple version)
+  // Wake word detection logic (one-shot per session)
   useEffect(() => {
-    if (!shouldListenForWakeRef.current) return
+    if (!shouldListenForWakeRef.current || status === 'connected' || status === 'connecting') return
     let recognition: SpeechRecognition | null = null
     let wakeActive = true
 
@@ -317,7 +317,47 @@ export default function Home() {
       recognition?.stop()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.name, settings.voiceId, settings.vibe])
+  }, [settings.name, settings.voiceId, settings.vibe, status])
+
+  // End session if user says 'ok [name], we are done for today'
+  useEffect(() => {
+    if (status !== 'connected') return
+    let recognition: SpeechRecognition | null = null
+    let endActive = true
+
+    function startEndListener() {
+      if (!('webkitSpeechRecognition' in window)) return
+      recognition = new (window as any).webkitSpeechRecognition()
+      if (!recognition) return
+      recognition.continuous = true
+      recognition.interimResults = false
+      recognition.lang = 'en-US'
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const transcript = event.results[i][0].transcript.trim().toLowerCase()
+          const donePhrase = `ok ${settings.name.toLowerCase()}, we are done for today`
+          if (transcript.includes(donePhrase)) {
+            endActive = false
+            recognition && recognition.stop()
+            endSession()
+            startWakeListening()
+            break
+          }
+        }
+      }
+      recognition.onend = () => {
+        if (endActive && recognition) recognition.start()
+      }
+      recognition.start()
+    }
+
+    startEndListener()
+    return () => {
+      endActive = false
+      recognition?.stop()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, settings.name])
 
   useEffect(() => {
     const canvas = canvasRef.current
