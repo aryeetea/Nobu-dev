@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { type CSSProperties, useState } from 'react'
+import { type CSSProperties, useEffect, useState } from 'react'
 import {
   colorOptions,
   hexToRgb,
@@ -16,12 +16,6 @@ import { useSession } from 'next-auth/react'
 
 export default function SettingsPage() {
   const { data: session, status: authStatus } = useSession()
-  // Auth protection
-  if (authStatus !== 'loading' && !session) {
-    if (typeof window !== 'undefined') window.location.replace('/login')
-    return null
-  }
-
   const [settings, setSettings] = useState<NobuSettings>(loadNobuSettings)
   const [isRenaming, setIsRenaming] = useState(false)
   const [nextName, setNextName] = useState(settings.name)
@@ -29,6 +23,16 @@ export default function SettingsPage() {
     '--nobu-color': settings.color,
     '--nobu-rgb': hexToRgb(settings.color),
   } as CSSProperties
+
+  useEffect(() => {
+    if (authStatus !== 'loading' && !session) {
+      window.location.replace('/login')
+    }
+  }, [authStatus, session])
+
+  if (authStatus !== 'loading' && !session) {
+    return null
+  }
 
   function updateSettings(update: Partial<NobuSettings>) {
     const nextSettings = { ...settings, ...update }

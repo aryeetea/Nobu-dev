@@ -1,22 +1,48 @@
 // Nobu2D.tsx
 // Immersive 2D character component using Live2D (pixi-live2d-display)
+'use client'
+
 import { useEffect, useRef } from 'react'
 
 // You need to provide a Live2D model JSON file and assets (e.g., public/live2d/nobu/model.json)
 // See: https://github.com/guansss/pixi-live2d-display
 
+type PixiApp = {
+  view: Node
+  stage: {
+    addChild: (child: unknown) => void
+  }
+  destroy: (removeView?: boolean, options?: { children?: boolean }) => void
+}
+
+type PixiModule = {
+  Application: new (options: Record<string, unknown>) => PixiApp
+}
+
+type Live2DModelInstance = {
+  scale: {
+    set: (value: number) => void
+  }
+  x: number
+  y: number
+  expression?: (name: string) => void
+}
+
+type Live2DModule = {
+  Live2DModel: {
+    from: (path: string) => Promise<Live2DModelInstance>
+  }
+}
+
 export default function Nobu2D({ expression, width = 320, height = 480 }: { expression?: string; width?: number; height?: number }) {
   const canvasRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    let app: any, model: any
-    let PIXI: any
-    let Live2DModel: any
-    let destroyed = false
+    let app: PixiApp | undefined
 
     async function loadModel() {
-      PIXI = (await import('pixi.js')).default
-      Live2DModel = (await import('pixi-live2d-display')).Live2DModel
+      const PIXI = (await import('pixi.js')).default as PixiModule
+      const { Live2DModel } = (await import('pixi-live2d-display')) as Live2DModule
       app = new PIXI.Application({
         view: undefined,
         width,
@@ -27,18 +53,17 @@ export default function Nobu2D({ expression, width = 320, height = 480 }: { expr
       if (!canvasRef.current) return
       canvasRef.current.innerHTML = ''
       canvasRef.current.appendChild(app.view)
-      model = await Live2DModel.from('/live2d/nobu/model.json')
+      const model = await Live2DModel.from('/live2d/nobu/model.json')
       model.scale.set(0.5)
       model.x = width / 2
       model.y = height * 0.9
       app.stage.addChild(model)
       if (expression) {
-        model.expression(expression)
+        model.expression?.(expression)
       }
     }
     loadModel()
     return () => {
-      destroyed = true
       if (app) app.destroy(true, { children: true })
     }
   }, [expression, width, height])

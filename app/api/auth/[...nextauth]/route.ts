@@ -12,12 +12,6 @@ const handler = NextAuth({
     strategy: 'jwt',
   },
   secret: process.env.NEXTAUTH_SECRET,
-  callbacks: {
-    async session({ session, token }) {
-      // Attach user id to session if needed
-      return session
-    },
-  },
 })
 
 export { handler as GET, handler as POST }

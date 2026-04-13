@@ -2,8 +2,6 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import * as PIXI from 'pixi.js'
-import { Live2DModel } from 'pixi-live2d-display'
 
 const MODEL_PATHS = {
   female: '/models/alexia/Alexia.model3.json',
@@ -16,16 +14,56 @@ type Props = {
   isListening: boolean
 }
 
+type PixiApplication = {
+  view: Node
+  screen: {
+    width: number
+    height: number
+  }
+  stage: {
+    addChild: (child: unknown) => void
+  }
+  destroy: (removeView?: boolean, options?: { children?: boolean }) => void
+}
+
+type PixiModule = {
+  Application: new (options: Record<string, unknown>) => PixiApplication
+}
+
+type NobuLive2DModel = {
+  anchor: {
+    set: (x: number, y?: number) => void
+  }
+  x: number
+  y: number
+  scale: {
+    set: (value: number) => void
+  }
+  motion: (name: string) => void
+  internalModel: {
+    coreModel: {
+      setParameterValueById: (id: string, value: number) => void
+    }
+  }
+}
+
+type Live2DModule = {
+  Live2DModel: {
+    from: (path: string) => Promise<NobuLive2DModel>
+  }
+}
+
 export default function NobuCharacter({ character, isSpeaking, isListening }: Props) {
   const canvasRef = useRef<HTMLDivElement>(null)
-  const modelRef = useRef<any>(null)
-  const appRef = useRef<PIXI.Application | null>(null)
+  const modelRef = useRef<NobuLive2DModel | null>(null)
+  const appRef = useRef<PixiApplication | null>(null)
 
   useEffect(() => {
-    let destroyed = false
-    let idleTimer: any
+    let idleTimer: ReturnType<typeof setInterval> | undefined
     async function loadModel() {
       if (!canvasRef.current) return
+      const PIXI = (await import('pixi.js')).default as PixiModule
+      const { Live2DModel } = (await import('pixi-live2d-display')) as Live2DModule
       canvasRef.current.innerHTML = ''
       const app = new PIXI.Application({
         width: window.innerWidth,
@@ -51,7 +89,6 @@ export default function NobuCharacter({ character, isSpeaking, isListening }: Pr
     }
     loadModel()
     return () => {
-      destroyed = true
       if (idleTimer) clearInterval(idleTimer)
       if (appRef.current) appRef.current.destroy(true, { children: true })
     }

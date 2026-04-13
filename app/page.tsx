@@ -3,16 +3,15 @@
 import { useConversation } from '@elevenlabs/react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import Script from 'next/script'
 import { type CSSProperties, useEffect, useRef, useState } from 'react'
 import {
-  DEFAULT_NOBU_SETTINGS,
   getVibeInstruction,
   hexToRgb,
   loadNobuSettings,
   type NobuSettings,
 } from './lib/nobu-settings'
 import { useSession } from 'next-auth/react'
+import NobuCharacter from './components/NobuCharacter'
 
 const AGENT_ID = 'agent_0301knzm0v3efm3th0qnb84gkqrg'
 
@@ -51,13 +50,6 @@ const introItems = [
   { prefix: 'Whatever', rest: 'you need.', tone: 'purple' },
   { prefix: 'Your', rest: 'Nobu.', tone: 'green', final: true },
 ]
-
-type ElevenLabsWidgetElement = HTMLElement & {
-  open?: () => void | Promise<void>
-  start?: () => void | Promise<void>
-  startSession?: () => void | Promise<void>
-  toggle?: () => void | Promise<void>
-}
 
 type WakeListenStatus = 'idle' | 'listening' | 'blocked' | 'unsupported'
 
@@ -107,49 +99,6 @@ type SpeechRecognitionWindow = Window & {
   webkitSpeechRecognition?: SpeechRecognitionConstructor
 }
 
-const widgetButtonSelectors = [
-  'button',
-  '[role="button"]',
-  '[aria-label*="start" i]',
-  '[aria-label*="call" i]',
-  '[aria-label*="talk" i]',
-  '[aria-label*="conversation" i]',
-  '[aria-label*="microphone" i]',
-]
-
-function dispatchUserClick(element: Element) {
-  element.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, composed: true }))
-  element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true }))
-  element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, composed: true }))
-  element.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }))
-}
-
-async function openElevenLabsWidget() {
-  const widget = document.querySelector<ElevenLabsWidgetElement>('elevenlabs-convai')
-  if (!widget) return false
-
-  for (const method of ['startSession', 'start'] as const) {
-    if (typeof widget[method] === 'function') {
-      await widget[method]()
-      return true
-    }
-  }
-
-  for (const method of ['open', 'toggle'] as const) {
-    if (typeof widget[method] === 'function') {
-      await widget[method]()
-    }
-  }
-
-  const clickable = widget.shadowRoot?.querySelector(widgetButtonSelectors.join(', '))
-  if (clickable) {
-    dispatchUserClick(clickable)
-    return true
-  }
-
-  return false
-}
-
 function transcriptContainsWakeWord(transcript: string, wakeWord: string) {
   const escapedWakeWord = wakeWord.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   if (!escapedWakeWord) return false
@@ -157,9 +106,6 @@ function transcriptContainsWakeWord(transcript: string, wakeWord: string) {
   return new RegExp(`(^|[^\\p{L}\\p{N}])${escapedWakeWord}([^\\p{L}\\p{N}]|$)`, 'iu')
     .test(transcript)
 }
-
-
-import NobuCharacter from './components/NobuCharacter'
 
 export default function Home() {
   const router = useRouter()
@@ -175,8 +121,8 @@ export default function Home() {
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const shouldListenForWakeRef = useRef(true)
   const wakeStartingRef = useRef(false)
-  const [settings, setSettings] = useState<NobuSettings>(DEFAULT_NOBU_SETTINGS)
-  const [character, setCharacter] = useState<'female' | 'male'>(() => {
+  const [settings, setSettings] = useState<NobuSettings>(loadNobuSettings)
+  const [character] = useState<'female' | 'male'>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('nobu-settings')
       if (stored) {
@@ -193,6 +139,10 @@ export default function Home() {
   const [introVisible, setIntroVisible] = useState(true)
   const [introExiting, setIntroExiting] = useState(false)
   const [wakeListenStatus, setWakeListenStatus] = useState<WakeListenStatus>('idle')
+  const universeStyle = {
+    '--nobu-color': settings.color,
+    '--nobu-rgb': hexToRgb(settings.color),
+  } as CSSProperties
 
   function stopWakeListening() {
     shouldListenForWakeRef.current = false
@@ -214,17 +164,6 @@ export default function Home() {
     }
   }
 
-  // Map vibe to prompt
-  function getVibePrompt(vibe: string) {
-    switch (vibe) {
-      case 'chill': return 'You are warm, calm and supportive.'
-      case 'sharp': return 'You are sharp, concise and direct.'
-      case 'playful': return 'You are playful, fun and energetic.'
-      case 'professional': return 'You are professional, focused and precise.'
-      default: return ''
-    }
-  }
-
   async function startNobuConversation() {
     stopWakeListening()
     try {
@@ -233,7 +172,7 @@ export default function Home() {
         connectionType: 'webrtc',
         overrides: {
           agent: {
-            prompt: { prompt: `Your name is ${settings.name}. ${getVibePrompt(settings.vibe)}` },
+            prompt: { prompt: `${NOBU_PERSONA}\nYour name is ${settings.name}. ${getVibeInstruction(settings.vibe)}` },
             firstMessage: `Hey, I'm ${settings.name}. I'm here — talk to me.`
           },
           tts: { voiceId: settings.voiceId }
@@ -248,15 +187,15 @@ export default function Home() {
   // No longer need startConversationRef
 
   useEffect(() => {
-    // Load settings from localStorage
-    const stored = localStorage.getItem('nobu-settings')
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored)
-        setSettings({ ...DEFAULT_NOBU_SETTINGS, ...parsed })
-      } catch {
-        setSettings(DEFAULT_NOBU_SETTINGS)
-      }
+    function syncSettings() {
+      setSettings(loadNobuSettings())
+    }
+
+    syncSettings()
+    window.addEventListener('nobu-settings-change', syncSettings)
+
+    return () => {
+      window.removeEventListener('nobu-settings-change', syncSettings)
     }
   }, [])
 
@@ -268,14 +207,7 @@ export default function Home() {
       return
     }
     // Onboarding protection
-    const stored = localStorage.getItem('nobu-settings')
-    let hasCompleted = false
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored)
-        hasCompleted = !!parsed.hasCompletedOnboarding
-      } catch {}
-    }
+    const hasCompleted = loadNobuSettings().hasCompletedOnboarding
     if (!hasCompleted) {
       router.replace('/onboarding')
     }
@@ -323,8 +255,11 @@ export default function Home() {
     let wakeActive = true
 
     function startWake() {
-      if (!('webkitSpeechRecognition' in window)) return
-      recognition = new (window as any).webkitSpeechRecognition()
+      const SpeechRecognitionApi =
+        (window as SpeechRecognitionWindow).SpeechRecognition ??
+        (window as SpeechRecognitionWindow).webkitSpeechRecognition
+      if (!SpeechRecognitionApi) return
+      recognition = new SpeechRecognitionApi()
       if (!recognition) return
       recognition.continuous = true
       recognition.interimResults = false
@@ -332,9 +267,9 @@ export default function Home() {
       recognition.onresult = (event: SpeechRecognitionEvent) => {
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           const transcript = event.results[i][0].transcript.trim().toLowerCase()
-          if (transcript.includes('hey nobu')) {
+          if (transcriptContainsWakeWord(transcript, settings.name)) {
             wakeActive = false
-            recognition && recognition.stop()
+            recognition?.stop()
             startNobuConversation()
             break
           }
@@ -361,8 +296,11 @@ export default function Home() {
     let endActive = true
 
     function startEndListener() {
-      if (!('webkitSpeechRecognition' in window)) return
-      recognition = new (window as any).webkitSpeechRecognition()
+      const SpeechRecognitionApi =
+        (window as SpeechRecognitionWindow).SpeechRecognition ??
+        (window as SpeechRecognitionWindow).webkitSpeechRecognition
+      if (!SpeechRecognitionApi) return
+      recognition = new SpeechRecognitionApi()
       if (!recognition) return
       recognition.continuous = true
       recognition.interimResults = false
@@ -373,7 +311,7 @@ export default function Home() {
           const donePhrase = `ok ${settings.name.toLowerCase()}, we are done for today`
           if (transcript.includes(donePhrase)) {
             endActive = false
-            recognition && recognition.stop()
+            recognition?.stop()
             endSession()
             startWakeListening()
             break
@@ -474,7 +412,7 @@ export default function Home() {
       )}
 
       {/* NobuCharacter replaces orb system */}
-      <div className={`universe${status === 'connected' ? ' awake' : ''}`} style={{ width: '100vw', minHeight: '100vh', background: '#0d0014', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+      <div className={`universe${status === 'connected' ? ' awake' : ''}`} style={universeStyle}>
         <Link aria-label="Open Nobu settings" className="settings-link" href="/settings">
           <svg aria-hidden="true" fill="none" height="17" viewBox="0 0 24 24" width="17">
             <path

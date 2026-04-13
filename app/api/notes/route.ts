@@ -13,10 +13,18 @@ export async function GET(req: NextRequest) {
 
 // POST: create a new note
 export async function POST(req: NextRequest) {
-  const { userId, content, summary, conversationId } = await req.json()
+  const { userId, content, conversationId } = (await req.json()) as {
+    userId?: string
+    content?: string
+    conversationId?: string
+  }
   if (!userId || !content) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   const note = await prisma.note.create({
-    data: { userId, content, summary, conversationId },
+    data: {
+      userId,
+      content,
+      ...(conversationId ? { sessionId: conversationId } : {}),
+    },
   })
   return NextResponse.json(note)
 }

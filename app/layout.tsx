@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from 'next'
+import Script from 'next/script'
 import Providers from './providers'
 import PWARegister from './pwa-register'
 import './globals.css'
+import React, { ReactNode } from 'react'
 
 export const metadata: Metadata = {
   title: 'Nobu',
@@ -27,19 +29,13 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <head>
-        <link rel="manifest" href="/manifest.json" />
-        <script src="/live2d/live2dcubismcore.min.js"></script>
-        <script src="/live2d/live2d.min.js"></script>
-      </head>
       <body>
+        {/* Use Next.js Script for Live2D scripts, no <head> wrapper needed */}
+        <Script src="/live2d/live2dcubismcore.min.js" strategy="beforeInteractive" />
+        <Script src="/live2d/live2d.min.js" strategy="beforeInteractive" />
         <PWARegister />
         <Providers>
           {children}
