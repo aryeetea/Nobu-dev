@@ -3,7 +3,7 @@
 import { useConversation } from '@elevenlabs/react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { type CSSProperties, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   getVibeInstruction,
   hexToRgb,
@@ -118,6 +118,7 @@ export default function Home() {
     isSpeaking,
     isListening,
   } = useConversation()
+  const universeRef = useRef<HTMLDivElement>(null)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const shouldListenForWakeRef = useRef(true)
   const wakeStartingRef = useRef(false)
@@ -139,10 +140,6 @@ export default function Home() {
   const [introVisible, setIntroVisible] = useState(true)
   const [introExiting, setIntroExiting] = useState(false)
   const [wakeListenStatus, setWakeListenStatus] = useState<WakeListenStatus>('idle')
-  const universeStyle = {
-    '--nobu-color': settings.color,
-    '--nobu-rgb': hexToRgb(settings.color),
-  } as CSSProperties
 
   function stopWakeListening() {
     shouldListenForWakeRef.current = false
@@ -198,6 +195,11 @@ export default function Home() {
       window.removeEventListener('nobu-settings-change', syncSettings)
     }
   }, [])
+
+  useEffect(() => {
+    universeRef.current?.style.setProperty('--nobu-color', settings.color)
+    universeRef.current?.style.setProperty('--nobu-rgb', hexToRgb(settings.color))
+  }, [settings.color])
 
   useEffect(() => {
     // Auth protection
@@ -358,7 +360,7 @@ export default function Home() {
         .intro-rest.purple { color: #7c3aed; }
         .intro-rest.green { color: #059669; }
         .intro-rest.pink { color: #db2777; }
-        .universe { width: 100%; min-height: 100vh; background: #0d0014; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+        .universe { --nobu-color: #7c3aed; --nobu-rgb: 124,58,237; width: 100%; min-height: 100vh; background: #0d0014; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; }
         .stars-bg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
         .orb-system { position: relative; z-index: 2; width: 320px; height: 320px; display: flex; align-items: center; justify-content: center; pointer-events: none; }
         .atmo { position: absolute; width: 260px; height: 260px; border-radius: 50%; background: radial-gradient(circle at 50% 50%, transparent 38%, rgba(var(--nobu-rgb),0.08) 60%, rgba(var(--nobu-rgb),0.18) 75%, transparent 100%); animation: breathe 4s ease-in-out infinite; }
@@ -412,7 +414,7 @@ export default function Home() {
       )}
 
       {/* NobuCharacter replaces orb system */}
-      <div className={`universe${status === 'connected' ? ' awake' : ''}`} style={universeStyle}>
+      <div className={`universe${status === 'connected' ? ' awake' : ''}`} ref={universeRef}>
         <Link aria-label="Open Nobu settings" className="settings-link" href="/settings">
           <svg aria-hidden="true" fill="none" height="17" viewBox="0 0 24 24" width="17">
             <path

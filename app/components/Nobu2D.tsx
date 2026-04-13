@@ -1,5 +1,5 @@
 // Nobu2D.tsx
-// Immersive 2D character component using Live2D (pixi-live2d-display)
+// Immersive 2D character component using Live2D
 'use client'
 
 import { useEffect, useRef } from 'react'
@@ -42,7 +42,7 @@ export default function Nobu2D({ expression, width = 320, height = 480 }: { expr
 
     async function loadModel() {
       const PIXI = (await import('pixi.js')).default as PixiModule
-      const { Live2DModel } = (await import('pixi-live2d-display')) as Live2DModule
+      const { Live2DModel } = (await import('@guansss/pixi-live2d-display')) as Live2DModule
       app = new PIXI.Application({
         view: undefined,
         width,

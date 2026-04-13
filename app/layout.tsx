@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import Providers from './providers'
+import ProvidersWrapper from './providers-wrapper'
 import PWARegister from './pwa-register'
 import './globals.css'
 import { ReactNode } from 'react'
@@ -33,9 +33,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en">
       <body>
         <PWARegister />
-        <Providers>
+        <ProvidersWrapper>
           {children}
-        </Providers>
+        </ProvidersWrapper>
       </body>
     </html>
   )

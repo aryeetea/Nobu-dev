@@ -3,6 +3,8 @@
 
 import { useEffect, useRef } from 'react'
 
+const CUBISM_CORE_SRC = '/live2d/live2dcubismcore.min.js'
+
 const MODEL_PATHS = {
   female: '/models/alexia/Alexia.model3.json',
   male: '/models/asuka/Asuka.model3.json',
@@ -53,25 +55,64 @@ type Live2DModule = {
   }
 }
 
+let cubismCoreLoadPromise: Promise<void> | null = null
+
+function loadCubismCore() {
+  if (cubismCoreLoadPromise) return cubismCoreLoadPromise
+
+  cubismCoreLoadPromise = new Promise((resolve, reject) => {
+    if ((window as { Live2DCubismCore?: unknown }).Live2DCubismCore) {
+      resolve()
+      return
+    }
+
+    const existingScript = document.querySelector<HTMLScriptElement>(
+      `script[src="${CUBISM_CORE_SRC}"]`
+    )
+
+    if (existingScript?.dataset.loaded === 'true') {
+      resolve()
+      return
+    }
+
+    const script = existingScript ?? document.createElement('script')
+    script.src = CUBISM_CORE_SRC
+    script.async = true
+    script.onload = () => {
+      script.dataset.loaded = 'true'
+      resolve()
+    }
+    script.onerror = () => {
+      cubismCoreLoadPromise = null
+      reject(new Error('Unable to load Live2D Cubism Core.'))
+    }
+
+    if (!existingScript) {
+      document.head.appendChild(script)
+    }
+  })
+
+  return cubismCoreLoadPromise
+}
+
 export default function NobuCharacter({ character, isSpeaking, isListening }: Props) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const modelRef = useRef<NobuLive2DModel | null>(null)
   const appRef = useRef<PixiApplication | null>(null)
 
-  // Inject live2dcubismcore.min.js into document.head on mount
-  useEffect(() => {
-    if (document.querySelector('script[src="/live2d/live2dcubismcore.min.js"]')) return
-    const script = document.createElement('script')
-    script.src = '/live2d/live2dcubismcore.min.js'
-    document.head.appendChild(script)
-  }, [])
-
   useEffect(() => {
     let idleTimer: ReturnType<typeof setInterval> | undefined
+    let cancelled = false
+
     async function loadModel() {
+      await loadCubismCore()
+      if (cancelled || !canvasRef.current) return
+
       if (!canvasRef.current) return
       const PIXI = (await import('pixi.js')).default as PixiModule
-      const { Live2DModel } = (await import('pixi-live2d-display')) as Live2DModule
+      const { Live2DModel } = (await import('@guansss/pixi-live2d-display')) as Live2DModule
+      if (cancelled || !canvasRef.current) return
+
       canvasRef.current.innerHTML = ''
       const app = new PIXI.Application({
         width: window.innerWidth,
@@ -83,6 +124,11 @@ export default function NobuCharacter({ character, isSpeaking, isListening }: Pr
       appRef.current = app
       canvasRef.current.appendChild(app.view)
       const model = await Live2DModel.from(MODEL_PATHS[character])
+      if (cancelled) {
+        app.destroy(true, { children: true })
+        return
+      }
+
       model.anchor.set(0.5, 1)
       model.x = app.screen.width / 2
       model.y = app.screen.height * 0.95
@@ -97,8 +143,11 @@ export default function NobuCharacter({ character, isSpeaking, isListening }: Pr
     }
     loadModel()
     return () => {
+      cancelled = true
       if (idleTimer) clearInterval(idleTimer)
       if (appRef.current) appRef.current.destroy(true, { children: true })
+      appRef.current = null
+      modelRef.current = null
     }
   }, [character])
 
