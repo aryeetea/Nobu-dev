@@ -58,6 +58,14 @@ export default function NobuCharacter({ character, isSpeaking, isListening }: Pr
   const modelRef = useRef<NobuLive2DModel | null>(null)
   const appRef = useRef<PixiApplication | null>(null)
 
+  // Inject live2dcubismcore.min.js into document.head on mount
+  useEffect(() => {
+    if (document.querySelector('script[src="/live2d/live2dcubismcore.min.js"]')) return
+    const script = document.createElement('script')
+    script.src = '/live2d/live2dcubismcore.min.js'
+    document.head.appendChild(script)
+  }, [])
+
   useEffect(() => {
     let idleTimer: ReturnType<typeof setInterval> | undefined
     async function loadModel() {
