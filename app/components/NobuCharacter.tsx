@@ -1,0 +1,82 @@
+// components/NobuCharacter.tsx
+'use client'
+
+import { useEffect, useRef } from 'react'
+import * as PIXI from 'pixi.js'
+import { Live2DModel } from 'pixi-live2d-display'
+
+const MODEL_PATHS = {
+  female: '/models/alexia/Alexia.model3.json',
+  male: '/models/asuka/Asuka.model3.json',
+}
+
+type Props = {
+  character: 'female' | 'male'
+  isSpeaking: boolean
+  isListening: boolean
+}
+
+export default function NobuCharacter({ character, isSpeaking, isListening }: Props) {
+  const canvasRef = useRef<HTMLDivElement>(null)
+  const modelRef = useRef<any>(null)
+  const appRef = useRef<PIXI.Application | null>(null)
+
+  useEffect(() => {
+    let destroyed = false
+    let idleTimer: any
+    async function loadModel() {
+      if (!canvasRef.current) return
+      canvasRef.current.innerHTML = ''
+      const app = new PIXI.Application({
+        width: window.innerWidth,
+        height: window.innerHeight,
+        transparent: true,
+        backgroundAlpha: 0,
+        resizeTo: window,
+      })
+      appRef.current = app
+      canvasRef.current.appendChild(app.view)
+      const model = await Live2DModel.from(MODEL_PATHS[character])
+      model.anchor.set(0.5, 1)
+      model.x = app.screen.width / 2
+      model.y = app.screen.height * 0.95
+      model.scale.set(Math.min(app.screen.width / 1200, app.screen.height / 1800))
+      app.stage.addChild(model)
+      modelRef.current = model
+      // Idle motion
+      model.motion('Idle')
+      idleTimer = setInterval(() => {
+        model.motion('Idle')
+      }, 12000)
+    }
+    loadModel()
+    return () => {
+      destroyed = true
+      if (idleTimer) clearInterval(idleTimer)
+      if (appRef.current) appRef.current.destroy(true, { children: true })
+    }
+  }, [character])
+
+  // Animate mouth and listening
+  useEffect(() => {
+    const model = modelRef.current
+    if (!model) return
+    // Speaking: open mouth
+    model.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', isSpeaking ? 1 : 0)
+    // Listening: animate head/eyes
+    if (isListening) {
+      model.internalModel.coreModel.setParameterValueById('ParamAngleY', Math.random() * 30 - 15)
+      model.internalModel.coreModel.setParameterValueById('ParamEyeBallX', Math.random() * 0.6 - 0.3)
+    } else {
+      model.internalModel.coreModel.setParameterValueById('ParamAngleY', 0)
+      model.internalModel.coreModel.setParameterValueById('ParamEyeBallX', 0)
+    }
+  }, [isSpeaking, isListening])
+
+  return (
+    <div
+      ref={canvasRef}
+      style={{ width: '100vw', height: '90vh', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', position: 'absolute', top: 0, left: 0, zIndex: 2 }}
+    />
+  )
+}

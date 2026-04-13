@@ -1,6 +1,3 @@
-// Prisma schema for Neon Postgres
-// Run: npx prisma migrate dev --name init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,19 +8,49 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  notes     Note[]
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  createdAt     DateTime  @default(now())
+  nobuName      String?
+  nobuCharacter String?   @default("female")
+  nobuVibe      String?
+  nobuMode      String?   @default("solo")
+  hasUsedRename Boolean   @default(false)
+  sessions      Session[]
+  notes         Note[]
+  memories      Memory[]
+}
+
+model Session {
+  id         String    @id @default(uuid())
+  user       User      @relation(fields: [userId], references: [id])
+  userId     String
+  startedAt  DateTime  @default(now())
+  endedAt    DateTime?
+  duration   Int?
+  mode       String?
+  transcript String?
+  summary    String?
+  notes      Note[]
 }
 
 model Note {
-  id          String   @id @default(uuid())
-  user        User     @relation(fields: [userId], references: [id])
-  userId      String
-  content     String
-  summary     String?
-  createdAt   DateTime @default(now())
-  conversationId String?
+  id        String    @id @default(uuid())
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String
+  session   Session?  @relation(fields: [sessionId], references: [id])
+  sessionId String?
+  content   String
+  type      String?
+  createdAt DateTime  @default(now())
+}
+
+model Memory {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
 }

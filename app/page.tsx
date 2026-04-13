@@ -12,6 +12,7 @@ import {
   loadNobuSettings,
   type NobuSettings,
 } from './lib/nobu-settings'
+import { useSession } from 'next-auth/react'
 
 const AGENT_ID = 'agent_0301knzm0v3efm3th0qnb84gkqrg'
 
@@ -157,9 +158,12 @@ function transcriptContainsWakeWord(transcript: string, wakeWord: string) {
     .test(transcript)
 }
 
+
+import NobuCharacter from './components/NobuCharacter'
+
 export default function Home() {
   const router = useRouter()
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const { data: session, status: authStatus } = useSession()
   // Conversation state from SDK
   const {
     startSession,
@@ -172,13 +176,23 @@ export default function Home() {
   const shouldListenForWakeRef = useRef(true)
   const wakeStartingRef = useRef(false)
   const [settings, setSettings] = useState<NobuSettings>(DEFAULT_NOBU_SETTINGS)
+  const [character, setCharacter] = useState<'female' | 'male'>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('nobu-settings')
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored)
+          if (parsed.character === 'male' || parsed.character === 'female') {
+            return parsed.character
+          }
+        } catch {}
+      }
+    }
+    return 'female'
+  })
   const [introVisible, setIntroVisible] = useState(true)
   const [introExiting, setIntroExiting] = useState(false)
   const [wakeListenStatus, setWakeListenStatus] = useState<WakeListenStatus>('idle')
-  const orbStyle = {
-    '--nobu-color': settings.color,
-    '--nobu-rgb': hexToRgb(settings.color),
-  } as CSSProperties
 
   function stopWakeListening() {
     shouldListenForWakeRef.current = false
@@ -245,6 +259,27 @@ export default function Home() {
       }
     }
   }, [])
+
+  useEffect(() => {
+    // Auth protection
+    if (authStatus === 'loading') return
+    if (!session) {
+      router.replace('/login')
+      return
+    }
+    // Onboarding protection
+    const stored = localStorage.getItem('nobu-settings')
+    let hasCompleted = false
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored)
+        hasCompleted = !!parsed.hasCompletedOnboarding
+      } catch {}
+    }
+    if (!hasCompleted) {
+      router.replace('/onboarding')
+    }
+  }, [session, authStatus, router])
 
   useEffect(() => {
     const words = Array.from(document.querySelectorAll<HTMLElement>('.intro-word'))
@@ -359,35 +394,7 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, settings.name])
 
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    let t = 0
-    const amplitude = 3
-    let animFrame: number
-
-    function drawWave() {
-      ctx!.clearRect(0, 0, canvas!.width, canvas!.height)
-      ctx!.beginPath()
-      ctx!.strokeStyle = 'rgba(196,181,253,0.7)'
-      ctx!.lineWidth = 1.5
-      for (let x = 0; x < canvas!.width; x++) {
-        const y = canvas!.height / 2
-          + Math.sin((x / canvas!.width) * Math.PI * 1.5 + t) * amplitude
-          + Math.sin((x / canvas!.width) * Math.PI * 2.5 + t * 1.3) * (amplitude * 0.4)
-        if (x === 0) ctx!.moveTo(x, y)
-        else ctx!.lineTo(x, y)
-      }
-      ctx!.stroke()
-      t += 0.025
-      animFrame = requestAnimationFrame(drawWave)
-    }
-
-    drawWave()
-    return () => cancelAnimationFrame(animFrame)
-  }, [])
+  // Removed orb/canvas effect
 
   // No longer need to endSession on unmount via ref
 
@@ -466,8 +473,8 @@ export default function Home() {
         </div>
       )}
 
-      {/* Animate orb based on conversation state */}
-      <div className={`universe${status === 'connected' ? ' awake' : ''}`} style={orbStyle}>
+      {/* NobuCharacter replaces orb system */}
+      <div className={`universe${status === 'connected' ? ' awake' : ''}`} style={{ width: '100vw', minHeight: '100vh', background: '#0d0014', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
         <Link aria-label="Open Nobu settings" className="settings-link" href="/settings">
           <svg aria-hidden="true" fill="none" height="17" viewBox="0 0 24 24" width="17">
             <path
@@ -494,31 +501,13 @@ export default function Home() {
           <circle cx="200" cy="450" r="0.8" fill="var(--nobu-color)" opacity="0.5"><animate attributeName="opacity" values="0.5;0.1;0.5" dur="2.3s" repeatCount="indefinite"/></circle>
           <circle cx="560" cy="470" r="1" fill="var(--nobu-color)" opacity="0.4"><animate attributeName="opacity" values="0.4;0.1;0.4" dur="3.7s" repeatCount="indefinite"/></circle>
         </svg>
-
-        <div className="orb-system">
-          <div className="wave-ring"></div>
-          <div className="wave-ring"></div>
-          <div className="wave-ring"></div>
-          <div className="atmo"></div>
-          <div className="ring-wrap">
-            <div className="ring"></div>
-            <div className="ring-inner"></div>
-          </div>
-          <div className={`orb${status === 'connected' ? ' orb-connected' : ''}${isSpeaking ? ' orb-speaking' : isListening ? ' orb-listening' : ''}`}> 
-            <div className="orb-shine"></div>
-            <div className="orb-shine2"></div>
-            <div className="orb-glow"></div>
-          </div>
-          <div className="particle" style={{width:'5px',height:'5px',background:'var(--nobu-color)',animationDuration:'8s',boxShadow:'0 0 4px var(--nobu-color)'}}></div>
-          <div className="particle" style={{width:'4px',height:'4px',background:'var(--nobu-color)',animationDuration:'12s',animationDelay:'-3s',boxShadow:'0 0 4px var(--nobu-color)'}}></div>
-          <div className="particle" style={{width:'3px',height:'3px',background:'var(--nobu-color)',animationDuration:'10s',animationDelay:'-6s',boxShadow:'0 0 3px var(--nobu-color)'}}></div>
+        <div style={{ width: '100vw', height: '90vh', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 2 }}>
+          <NobuCharacter character={character} isSpeaking={isSpeaking} isListening={isListening} />
         </div>
-
         <div className="status">
           <div className="s-dot"></div>
           <span className="s-text">Nobu is here</span>
         </div>
-
         <button
           className={`meet-btn ${status === 'connected' ? 'connected' : ''}`}
           disabled={status === 'connecting'}
@@ -530,10 +519,6 @@ export default function Home() {
               ? 'End call'
               : 'Meet your Nobu →'}
         </button>
-
-        <div className="canvas-wrap">
-          <canvas ref={canvasRef} width={260} height={40}></canvas>
-        </div>
       </div>
 
       <div className={`wake-indicator ${wakeListenStatus}`}>

@@ -34,6 +34,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <script src="/live2d/live2dcubismcore.min.js"></script>
+        <script src="/live2d/live2d.min.js"></script>
+      </head>
       <body>
         <PWARegister />
         <Providers>

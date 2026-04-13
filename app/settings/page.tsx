@@ -12,8 +12,16 @@ import {
   type NobuSettings,
   type NobuVibeId,
 } from '../lib/nobu-settings'
+import { useSession } from 'next-auth/react'
 
 export default function SettingsPage() {
+  const { data: session, status: authStatus } = useSession()
+  // Auth protection
+  if (authStatus !== 'loading' && !session) {
+    if (typeof window !== 'undefined') window.location.replace('/login')
+    return null
+  }
+
   const [settings, setSettings] = useState<NobuSettings>(loadNobuSettings)
   const [isRenaming, setIsRenaming] = useState(false)
   const [nextName, setNextName] = useState(settings.name)

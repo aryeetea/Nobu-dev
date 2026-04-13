@@ -13,9 +13,11 @@ import {
   type NobuVibeId,
   type NobuVoiceId,
 } from '../lib/nobu-settings'
+import { useSession } from 'next-auth/react'
 
 export default function OnboardingPage() {
   const router = useRouter()
+  const { data: session, status: authStatus } = useSession()
   const [step, setStep] = useState(0)
   const [name, setName] = useState('')
   const [voiceId, setVoiceId] = useState<NobuVoiceId>('eXpIbVcVbLo8ZJQDlDnl')
@@ -39,6 +41,12 @@ export default function OnboardingPage() {
 
     saveNobuSettings(settings)
     router.replace('/')
+  }
+
+  // Auth protection
+  if (authStatus !== 'loading' && !session) {
+    if (typeof window !== 'undefined') router.replace('/login')
+    return null
   }
 
   return (
