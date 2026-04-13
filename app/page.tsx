@@ -1,9 +1,6 @@
 'use client'
 
-import {
-  Conversation,
-  type Conversation as ElevenLabsConversation,
-} from '@elevenlabs/client'
+import { useConversation } from '@elevenlabs/react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Script from 'next/script'
@@ -163,18 +160,20 @@ function transcriptContainsWakeWord(transcript: string, wakeWord: string) {
 export default function Home() {
   const router = useRouter()
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const conversationRef = useRef<ElevenLabsConversation | null>(null)
+  // Conversation state from SDK
+  const {
+    startSession,
+    endSession,
+    status,
+    isSpeaking,
+    isListening,
+  } = useConversation()
   const recognitionRef = useRef<SpeechRecognition | null>(null)
-  const startConversationRef = useRef<(() => Promise<void>) | null>(null)
   const shouldListenForWakeRef = useRef(true)
   const wakeStartingRef = useRef(false)
-  const callStatusRef = useRef<'idle' | 'connecting' | 'connected'>('idle')
-  const settingsRef = useRef<NobuSettings>(DEFAULT_NOBU_SETTINGS)
   const [settings, setSettings] = useState<NobuSettings>(DEFAULT_NOBU_SETTINGS)
-  const nobuNameRef = useRef(DEFAULT_NOBU_SETTINGS.name)
   const [introVisible, setIntroVisible] = useState(true)
   const [introExiting, setIntroExiting] = useState(false)
-  const [callStatus, setCallStatus] = useState<'idle' | 'connecting' | 'connected'>('idle')
   const [wakeListenStatus, setWakeListenStatus] = useState<WakeListenStatus>('idle')
   const orbStyle = {
     '--nobu-color': settings.color,
@@ -188,13 +187,11 @@ export default function Home() {
   }
 
   function startWakeListening() {
-    if (!recognitionRef.current || wakeStartingRef.current || callStatusRef.current !== 'idle') {
+    if (!recognitionRef.current || wakeStartingRef.current || status !== 'disconnected') {
       return
     }
-
     shouldListenForWakeRef.current = true
     wakeStartingRef.current = true
-
     try {
       recognitionRef.current.start()
       setWakeListenStatus('listening')
@@ -203,101 +200,51 @@ export default function Home() {
     }
   }
 
-  async function startNobuConversation() {
-    if (callStatusRef.current !== 'idle' || conversationRef.current?.isOpen()) {
-      return
-    }
-
-    stopWakeListening()
-    callStatusRef.current = 'connecting'
-    setCallStatus('connecting')
-
-    try {
-      conversationRef.current = await Conversation.startSession({
-        agentId: AGENT_ID,
-        connectionType: 'websocket',
-        overrides: {
-          agent: {
-            firstMessage: `Hey, I’m ${settingsRef.current.name}. I’m here with you. What should we work through first?`,
-            prompt: {
-              prompt: `${NOBU_PERSONA}\n${getVibeInstruction(settingsRef.current.vibe)}`,
-            },
-          },
-          tts: {
-            voiceId: settingsRef.current.voiceId,
-            stability: 0.72,
-            similarityBoost: 0.82,
-            speed: 0.94,
-          },
-        },
-        onConnect: () => {
-          callStatusRef.current = 'connected'
-          setCallStatus('connected')
-        },
-        onDisconnect: () => {
-          conversationRef.current = null
-          callStatusRef.current = 'idle'
-          setCallStatus('idle')
-          startWakeListening()
-        },
-        onError: (message) => {
-          console.error('ElevenLabs conversation error:', message)
-          conversationRef.current = null
-          callStatusRef.current = 'idle'
-          setCallStatus('idle')
-          startWakeListening()
-        },
-      })
-    } catch (error) {
-      console.error('Unable to start ElevenLabs conversation:', error)
-      conversationRef.current = null
-      callStatusRef.current = 'idle'
-      setCallStatus('idle')
-      startWakeListening()
-      await openElevenLabsWidget()
+  // Map vibe to prompt
+  function getVibePrompt(vibe: string) {
+    switch (vibe) {
+      case 'chill': return 'You are warm, calm and supportive.'
+      case 'sharp': return 'You are sharp, concise and direct.'
+      case 'playful': return 'You are playful, fun and energetic.'
+      case 'professional': return 'You are professional, focused and precise.'
+      default: return ''
     }
   }
 
-  useEffect(() => {
-    startConversationRef.current = startNobuConversation
-  })
-
-  useEffect(() => {
-    const applySettings = (nextSettings: NobuSettings) => {
-      settingsRef.current = nextSettings
-      nobuNameRef.current = nextSettings.name
-      setSettings(nextSettings)
+  async function startNobuConversation() {
+    stopWakeListening()
+    try {
+      await startSession({
+        agentId: AGENT_ID,
+        connectionType: 'webrtc',
+        overrides: {
+          agent: {
+            prompt: { prompt: `Your name is ${settings.name}. ${getVibePrompt(settings.vibe)}` },
+            firstMessage: `Hey, I'm ${settings.name}. I'm here — talk to me.`
+          },
+          tts: { voiceId: settings.voiceId }
+        }
+      })
+    } catch (error) {
+      // Optionally handle error
+      console.error('Unable to start ElevenLabs conversation:', error)
     }
+  }
 
-    const loadSettings = () => {
-      const nextSettings = loadNobuSettings()
-      applySettings(nextSettings)
+  // No longer need startConversationRef
 
-      if (!nextSettings.hasCompletedOnboarding) {
-        router.replace('/onboarding')
+  useEffect(() => {
+    // Load settings from localStorage
+    const stored = localStorage.getItem('nobu-settings')
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored)
+        setSettings({ ...DEFAULT_NOBU_SETTINGS, ...parsed })
+      } catch {
+        setSettings(DEFAULT_NOBU_SETTINGS)
       }
     }
-
-    const handleSettingsChange = (event: Event) => {
-      const detail = (event as CustomEvent<NobuSettings>).detail
-      applySettings(detail ?? loadNobuSettings())
-    }
-
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === 'nobuSettings' || event.key === 'nobuName') {
-        applySettings(loadNobuSettings())
-      }
-    }
-
-    queueMicrotask(loadSettings)
-    window.addEventListener('nobu-settings-change', handleSettingsChange)
-    window.addEventListener('storage', handleStorage)
-
-    return () => {
-      window.removeEventListener('nobu-settings-change', handleSettingsChange)
-      window.removeEventListener('storage', handleStorage)
-    }
-  }, [router])
+  }, [])
 
   useEffect(() => {
     const words = Array.from(document.querySelectorAll<HTMLElement>('.intro-word'))
@@ -334,75 +281,43 @@ export default function Home() {
     }
   }, [])
 
+  // Wake word detection logic (simple version)
   useEffect(() => {
-    if (!loadNobuSettings().hasCompletedOnboarding) {
-      return
-    }
+    if (!shouldListenForWakeRef.current) return
+    let recognition: SpeechRecognition | null = null
+    let wakeActive = true
 
-    const SpeechRecognitionConstructor =
-      (window as SpeechRecognitionWindow).SpeechRecognition
-      ?? (window as SpeechRecognitionWindow).webkitSpeechRecognition
-
-    if (!SpeechRecognitionConstructor) {
-      queueMicrotask(() => setWakeListenStatus('unsupported'))
-      return
-    }
-
-    const recognition = new SpeechRecognitionConstructor()
-    recognition.continuous = true
-    recognition.interimResults = true
-    recognition.lang = 'en-US'
-    recognition.maxAlternatives = 1
-
-    recognition.onresult = (event) => {
-      for (let i = event.resultIndex; i < event.results.length; i += 1) {
-        const transcript = event.results[i]?.[0]?.transcript ?? ''
-
-        if (transcriptContainsWakeWord(transcript, nobuNameRef.current)) {
-          shouldListenForWakeRef.current = false
-          recognition.abort()
-          setWakeListenStatus('idle')
-          void startConversationRef.current?.()
-          break
+    function startWake() {
+      if (!('webkitSpeechRecognition' in window)) return
+      recognition = new (window as any).webkitSpeechRecognition()
+      if (!recognition) return
+      recognition.continuous = true
+      recognition.interimResults = false
+      recognition.lang = 'en-US'
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const transcript = event.results[i][0].transcript.trim().toLowerCase()
+          if (transcript.includes('hey nobu')) {
+            wakeActive = false
+            recognition && recognition.stop()
+            startNobuConversation()
+            break
+          }
         }
       }
-    }
-
-    recognition.onerror = (event) => {
-      wakeStartingRef.current = false
-
-      if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-        shouldListenForWakeRef.current = false
-        setWakeListenStatus('blocked')
-        return
+      recognition.onend = () => {
+        if (wakeActive && recognition) recognition.start()
       }
-
-      setWakeListenStatus('idle')
+      recognition.start()
     }
 
-    recognition.onend = () => {
-      wakeStartingRef.current = false
-
-      if (!shouldListenForWakeRef.current || callStatusRef.current !== 'idle') {
-        return
-      }
-
-      window.setTimeout(() => {
-        if (shouldListenForWakeRef.current && callStatusRef.current === 'idle') {
-          startWakeListening()
-        }
-      }, 450)
-    }
-
-    recognitionRef.current = recognition
-    queueMicrotask(startWakeListening)
-
+    startWake()
     return () => {
-      shouldListenForWakeRef.current = false
-      recognition.abort()
-      recognitionRef.current = null
+      wakeActive = false
+      recognition?.stop()
     }
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.name, settings.voiceId, settings.vibe])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -434,27 +349,15 @@ export default function Home() {
     return () => cancelAnimationFrame(animFrame)
   }, [])
 
-  useEffect(() => {
-    return () => {
-      conversationRef.current?.endSession()
-    }
-  }, [])
+  // No longer need to endSession on unmount via ref
 
   async function handleMeetNobu() {
-    if (callStatus === 'connecting') {
-      await openElevenLabsWidget()
-      return
-    }
-
-    if (callStatus === 'connected' || conversationRef.current?.isOpen()) {
-      await conversationRef.current?.endSession()
-      conversationRef.current = null
-      callStatusRef.current = 'idle'
-      setCallStatus('idle')
+    if (status === 'connecting') return
+    if (status === 'connected') {
+      await endSession()
       startWakeListening()
       return
     }
-
     await startNobuConversation()
   }
 
@@ -523,7 +426,8 @@ export default function Home() {
         </div>
       )}
 
-      <div className={`universe ${callStatus !== 'idle' ? 'awake' : ''}`} style={orbStyle}>
+      {/* Animate orb based on conversation state */}
+      <div className={`universe${status === 'connected' ? ' awake' : ''}`} style={orbStyle}>
         <Link aria-label="Open Nobu settings" className="settings-link" href="/settings">
           <svg aria-hidden="true" fill="none" height="17" viewBox="0 0 24 24" width="17">
             <path
@@ -560,7 +464,7 @@ export default function Home() {
             <div className="ring"></div>
             <div className="ring-inner"></div>
           </div>
-          <div className="orb">
+          <div className={`orb${status === 'connected' ? ' orb-connected' : ''}${isSpeaking ? ' orb-speaking' : isListening ? ' orb-listening' : ''}`}> 
             <div className="orb-shine"></div>
             <div className="orb-shine2"></div>
             <div className="orb-glow"></div>
@@ -576,13 +480,13 @@ export default function Home() {
         </div>
 
         <button
-          className={`meet-btn ${callStatus === 'connected' ? 'connected' : ''}`}
-          disabled={callStatus === 'connecting'}
+          className={`meet-btn ${status === 'connected' ? 'connected' : ''}`}
+          disabled={status === 'connecting'}
           onClick={handleMeetNobu}
         >
-          {callStatus === 'connecting'
+          {status === 'connecting'
             ? 'Connecting...'
-            : callStatus === 'connected'
+            : status === 'connected'
               ? 'End call'
               : 'Meet your Nobu →'}
         </button>
@@ -601,20 +505,13 @@ export default function Home() {
               ? 'Wake word off'
               : wakeListenStatus === 'unsupported'
                 ? 'Wake word unavailable'
-                : callStatus === 'idle'
+                : status === 'disconnected'
                   ? 'Wake word paused'
                   : 'In conversation'}
         </span>
       </div>
 
-      <div className="elevenlabs-widget-shell">
-        <elevenlabs-convai agent-id={AGENT_ID}></elevenlabs-convai>
-      </div>
-
-      <Script
-        src="https://unpkg.com/@elevenlabs/convai-widget-embed"
-        strategy="afterInteractive"
-      />
+      {/* ElevenLabs widget and script removed. Now handled by React SDK. */}
     </>
   )
 }
