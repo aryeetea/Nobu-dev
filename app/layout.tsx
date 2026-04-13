@@ -35,7 +35,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         {/* Use Next.js Script for Live2D scripts, no <head> wrapper needed */}
         <Script src="/live2d/live2dcubismcore.min.js" strategy="beforeInteractive" />
-        <Script src="/live2d/live2d.min.js" strategy="beforeInteractive" />
         <PWARegister />
         <Providers>
           {children}
