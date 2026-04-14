@@ -1,5 +1,6 @@
-const CACHE_NAME = 'nobu-pwa-v1'
-const PRECACHE_URLS = ['/', '/manifest.webmanifest', '/icon', '/apple-icon']
+const APP_CACHE_NAME = 'nobu-app-v2'
+const ASSET_CACHE_NAME = 'nobu-assets-v2'
+const PRECACHE_URLS = ['/', '/offline', '/manifest.webmanifest', '/icon', '/apple-icon']
 const IS_LOCAL_DEV =
   self.location.hostname === 'localhost' ||
   self.location.hostname === '127.0.0.1' ||
@@ -22,7 +23,7 @@ self.addEventListener('install', (event) => {
 
   event.waitUntil(
     caches
-      .open(CACHE_NAME)
+      .open(APP_CACHE_NAME)
       .then((cache) => cache.addAll(PRECACHE_URLS))
       .then(() => self.skipWaiting())
   )
@@ -45,7 +46,7 @@ self.addEventListener('activate', (event) => {
       .then((cacheNames) =>
         Promise.all(
           cacheNames
-            .filter((cacheName) => cacheName !== CACHE_NAME)
+            .filter((cacheName) => cacheName !== APP_CACHE_NAME && cacheName !== ASSET_CACHE_NAME)
             .map((cacheName) => caches.delete(cacheName))
         )
       )
@@ -65,9 +66,12 @@ self.addEventListener('fetch', (event) => {
 
   const requestUrl = new URL(request.url)
 
+  if (requestUrl.origin !== self.location.origin) return
+
   if (
     requestUrl.pathname.startsWith('/_next/') ||
     requestUrl.pathname.startsWith('/__nextjs') ||
+    requestUrl.pathname.startsWith('/api/') ||
     request.destination === 'script' ||
     request.destination === 'style'
   ) {
@@ -80,15 +84,37 @@ self.addEventListener('fetch', (event) => {
       fetch(request)
         .then((response) => {
           const copy = response.clone()
-          caches.open(CACHE_NAME).then((cache) => cache.put('/', copy))
+          caches.open(APP_CACHE_NAME).then((cache) => cache.put('/', copy))
           return response
         })
-        .catch(() => caches.match('/') || Response.error())
+        .catch(() => caches.match('/') || caches.match('/offline') || Response.error())
     )
     return
   }
 
-  if (requestUrl.origin !== self.location.origin) return
+  if (
+    requestUrl.pathname.startsWith('/models/') ||
+    requestUrl.pathname.startsWith('/live2d/') ||
+    requestUrl.pathname === '/icon' ||
+    requestUrl.pathname === '/apple-icon' ||
+    requestUrl.pathname === '/manifest.webmanifest'
+  ) {
+    event.respondWith(
+      caches.match(request).then((cachedResponse) => {
+        if (cachedResponse) return cachedResponse
+
+        return fetch(request).then((response) => {
+          if (response.ok) {
+            const copy = response.clone()
+            caches.open(ASSET_CACHE_NAME).then((cache) => cache.put(request, copy))
+          }
+
+          return response
+        })
+      })
+    )
+    return
+  }
 
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
@@ -97,7 +123,7 @@ self.addEventListener('fetch', (event) => {
       return fetch(request).then((response) => {
         if (response.ok) {
           const copy = response.clone()
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy))
+          caches.open(APP_CACHE_NAME).then((cache) => cache.put(request, copy))
         }
 
         return response

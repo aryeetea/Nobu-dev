@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Nobu</string>
+    <string name="title_activity_main">Nobu</string>
+    <string name="package_name">com.nobu.app</string>
+    <string name="custom_url_scheme">com.nobu.app</string>
+</resources>

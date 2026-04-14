@@ -19,10 +19,7 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"],
-      "@guansss/pixi-live2d-display/lib/cubism4": [
-        "./app/lib/live2d-cubism4"
-      ]
+      "@/*": ["./*"]
     }
   },
   "include": [

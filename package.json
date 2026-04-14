@@ -6,9 +6,19 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "cap:sync": "cap sync",
+    "cap:open:ios": "cap open ios",
+    "cap:open:android": "cap open android",
+    "mobile:sync": "cap sync",
+    "mobile:ios": "cap open ios",
+    "mobile:android": "cap open android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.0",
+    "@capacitor/cli": "^8.3.0",
+    "@capacitor/core": "^8.3.0",
+    "@capacitor/ios": "^8.3.0",
     "@elevenlabs/react": "^1.1.0",
     "@guansss/pixi-live2d-display": "npm:pixi-live2d-display@^0.4.0",
     "@prisma/adapter-pg": "^7.7.0",
@@ -19,8 +29,7 @@
     "next": "16.2.3",
     "next-auth": "^4.24.13",
     "pg": "^8.20.0",
-    "pixi-live2d-display": "github:guansss/pixi-live2d-display",
-    "pixi.js": "^7.4.3",
+    "pixi.js": "^6.5.10",
     "prisma": "^7.7.0",
     "react": "19.2.4",
     "react-dom": "19.2.4"

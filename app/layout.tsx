@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import AppInstallPrompt from './components/AppInstallPrompt'
 import ProvidersWrapper from './providers-wrapper'
 import PWARegister from './pwa-register'
 import './globals.css'
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <PWARegister />
         <ProvidersWrapper>
           {children}
+          <AppInstallPrompt />
         </ProvidersWrapper>
       </body>
     </html>
