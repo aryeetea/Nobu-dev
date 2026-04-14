@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/app/lib/prisma'
 
-const prisma = new PrismaClient()
+export const runtime = 'nodejs'
 
 // GET: fetch all notes for a user (by userId query param)
 export async function GET(req: NextRequest) {
