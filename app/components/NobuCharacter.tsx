@@ -6,12 +6,18 @@ import { live2dModels } from '../lib/live2d-models'
 
 type Character = 'female' | 'male'
 type LoadStatus = 'idle' | 'loading' | 'success' | 'fail'
-export type NobuRoomAction = 'center' | 'desk' | 'chair' | 'bed' | 'shelf'
+export type NobuRoomAction = 'center' | 'desk' | 'chair' | 'bed' | 'window' | 'lights'
 
 type MotionRequest = {
   group: string
   id: number
   index: number
+}
+
+type ModelPlacement = {
+  pacingRange: number
+  x: number
+  y: number
 }
 
 type Props = {
@@ -20,6 +26,7 @@ type Props = {
   isSpeaking: boolean
   isListening: boolean
   motionRequest?: MotionRequest | null
+  roomAction?: NobuRoomAction
   shouldLoad?: boolean
   toggles?: Record<string, boolean>
 }
@@ -150,12 +157,51 @@ function waitForNextFrame() {
   })
 }
 
-function placeModel(model: Live2DModelInstance, app: PixiApp) {
+function getRoomPlacement(action: NobuRoomAction, smallScreen: boolean) {
+  if (smallScreen) {
+    switch (action) {
+      case 'bed':
+        return { x: 0.34, y: 0.95, width: 0.68, height: 0.68 }
+      case 'desk':
+        return { x: 0.62, y: 0.94, width: 0.68, height: 0.7 }
+      case 'chair':
+        return { x: 0.48, y: 0.94, width: 0.7, height: 0.72 }
+      case 'window':
+        return { x: 0.52, y: 0.94, width: 0.7, height: 0.72 }
+      case 'lights':
+      case 'center':
+      default:
+        return { x: 0.5, y: 0.94, width: 0.88, height: 0.78 }
+    }
+  }
+
+  switch (action) {
+    case 'bed':
+      return { x: 0.28, y: 0.98, width: 0.32, height: 0.68 }
+    case 'desk':
+      return { x: 0.58, y: 0.98, width: 0.34, height: 0.7 }
+    case 'chair':
+      return { x: 0.42, y: 0.98, width: 0.34, height: 0.7 }
+    case 'window':
+      return { x: 0.5, y: 0.98, width: 0.34, height: 0.7 }
+    case 'lights':
+    case 'center':
+    default:
+      return { x: 0.5, y: 0.98, width: 0.38, height: 0.76 }
+  }
+}
+
+function placeModel(
+  model: Live2DModelInstance,
+  app: PixiApp,
+  roomAction: NobuRoomAction,
+): ModelPlacement {
   const smallScreen = isSmallScreen()
   const screenWidth = app.screen.width
   const screenHeight = app.screen.height
-  const targetHeight = screenHeight * (smallScreen ? 0.78 : 0.76)
-  const targetWidth = screenWidth * (smallScreen ? 0.88 : 0.38)
+  const placement = getRoomPlacement(roomAction, smallScreen)
+  const targetHeight = screenHeight * placement.height
+  const targetWidth = screenWidth * placement.width
 
   model.anchor?.set(0.5, 1)
   model.rotation = 0
@@ -167,8 +213,29 @@ function placeModel(model: Live2DModelInstance, app: PixiApp) {
   const scale = Math.max(0.03, Math.min(computedScale, smallScreen ? 0.78 : 0.56))
 
   model.scale.set(scale)
-  model.x = screenWidth / 2
-  model.y = screenHeight * (smallScreen ? 0.94 : 0.98)
+  model.x = screenWidth * placement.x
+  model.y = screenHeight * placement.y
+
+  return {
+    pacingRange: screenWidth * (smallScreen ? 0.018 : roomAction === 'center' ? 0.04 : 0.02),
+    x: model.x,
+    y: model.y,
+  }
+}
+
+function paceModel(
+  model: Live2DModelInstance | null,
+  basePlacement: ModelPlacement | null,
+  roomAction: NobuRoomAction,
+) {
+  if (!model || !basePlacement) return
+
+  const phase = performance.now() / 1000
+  const pacingStrength =
+    roomAction === 'bed' || roomAction === 'chair' || roomAction === 'lights' ? 0.35 : 1
+
+  model.x = basePlacement.x + Math.sin(phase * 0.72) * basePlacement.pacingRange * pacingStrength
+  model.y = basePlacement.y + Math.sin(phase * 1.44) * 3
 }
 
 function applyToggles(model: Live2DModelInstance | null, toggles: Record<string, boolean>) {
@@ -186,12 +253,15 @@ export default function NobuCharacter({
   isSpeaking,
   isListening,
   motionRequest = null,
+  roomAction = 'center',
   shouldLoad = true,
   toggles = {},
 }: Props) {
   const appRef = useRef<PixiApp | null>(null)
+  const basePlacementRef = useRef<ModelPlacement | null>(null)
   const hostRef = useRef<HTMLDivElement>(null)
   const modelRef = useRef<Live2DModelInstance | null>(null)
+  const roomActionRef = useRef<NobuRoomAction>(roomAction)
   const togglesRef = useRef(toggles)
   const [loadStatus, setLoadStatus] = useState<LoadStatus>('idle')
   const [errorMessage, setErrorMessage] = useState('')
@@ -259,18 +329,23 @@ export default function NobuCharacter({
         resizeApp(app, host)
         await waitForNextFrame()
         if (cancelled) return
-        placeModel(model, app)
+        basePlacementRef.current = placeModel(model, app, roomActionRef.current)
         applyToggles(model, togglesRef.current)
 
         applyToggleFrame = () => {
           applyToggles(modelRef.current, togglesRef.current)
+          paceModel(modelRef.current, basePlacementRef.current, roomActionRef.current)
         }
         app.ticker.add(applyToggleFrame)
 
         resizeObserver = new ResizeObserver(() => {
           if (!appRef.current || !modelRef.current) return
           resizeApp(appRef.current, host)
-          placeModel(modelRef.current, appRef.current)
+          basePlacementRef.current = placeModel(
+            modelRef.current,
+            appRef.current,
+            roomActionRef.current,
+          )
         })
         resizeObserver.observe(host)
 
@@ -299,9 +374,16 @@ export default function NobuCharacter({
       appRef.current?.destroy(true, { baseTexture: true, children: true, texture: true })
       modelRef.current = null
       appRef.current = null
+      basePlacementRef.current = null
       host.replaceChildren()
     }
   }, [character, shouldLoad])
+
+  useEffect(() => {
+    roomActionRef.current = roomAction
+    if (loadStatus !== 'success' || !modelRef.current || !appRef.current) return
+    basePlacementRef.current = placeModel(modelRef.current, appRef.current, roomAction)
+  }, [loadStatus, roomAction])
 
   useEffect(() => {
     if (loadStatus !== 'success' || !modelRef.current) return

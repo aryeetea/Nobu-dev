@@ -12,7 +12,7 @@ import {
   type NobuSettings,
 } from './lib/nobu-settings'
 import { useSession } from 'next-auth/react'
-import NobuCharacter from './components/NobuCharacter'
+import NobuCharacter, { type NobuRoomAction } from './components/NobuCharacter'
 import NobuModelControls from './components/NobuModelControls'
 import NobuRoom from './components/NobuRoom'
 import type { Live2DMotionOption } from './lib/live2d-models'
@@ -135,6 +135,7 @@ export default function Home() {
   >(null)
   const [modelToggles, setModelToggles] = useState<Record<string, boolean>>({})
   const [autoModelToggles, setAutoModelToggles] = useState<Record<string, boolean>>({})
+  const [roomAction, setRoomAction] = useState<NobuRoomAction>('center')
   const [introVisible, setIntroVisible] = useState(true)
   const [introExiting, setIntroExiting] = useState(false)
   const [wakeListenStatus, setWakeListenStatus] = useState<WakeListenStatus>('idle')
@@ -251,6 +252,7 @@ export default function Home() {
       setAutoExpressionIndex(null)
       setModelToggles({})
       setAutoModelToggles({})
+      setRoomAction('center')
       lastVisualEmotionRef.current = 'neutral'
       lastExplicitVisualEmotionAtRef.current = 0
     }
@@ -451,7 +453,7 @@ export default function Home() {
 
       {/* NobuCharacter in the room environment */}
       <div className={`nobu-stage${status === 'connected' ? ' awake' : ''}`} ref={stageRef}>
-        <NobuRoom character={character} />
+        <NobuRoom character={character} onRoomAction={setRoomAction} />
         <Link aria-label="Open Nobu settings" className="settings-link" href="/settings">
           <svg aria-hidden="true" fill="none" height="17" viewBox="0 0 24 24" width="17">
             <path
@@ -474,6 +476,7 @@ export default function Home() {
             isListening={isListening}
             isSpeaking={isSpeaking}
             motionRequest={motionRequest}
+            roomAction={roomAction}
             shouldLoad={
               !introVisible ||
               status === 'connecting' ||

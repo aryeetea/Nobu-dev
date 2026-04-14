@@ -2,9 +2,11 @@
 
 import Image from 'next/image'
 import { useState } from 'react'
+import type { NobuRoomAction } from './NobuCharacter'
 
 type Props = {
   character: 'female' | 'male'
+  onRoomAction?: (action: NobuRoomAction) => void
 }
 
 type RoomArea = 'bed' | 'desk' | 'chair' | 'window' | 'lights'
@@ -51,13 +53,17 @@ const roomThemes = {
   },
 }
 
-export default function NobuRoom({ character }: Props) {
+export default function NobuRoom({ character, onRoomAction }: Props) {
   const theme = roomThemes[character]
   const roomImage = roomImages[character]
   const [activeArea, setActiveArea] = useState<RoomArea | null>(null)
 
   function activateArea(area: RoomArea) {
-    setActiveArea((current) => current === area ? null : area)
+    setActiveArea((current) => {
+      const nextArea = current === area ? null : area
+      onRoomAction?.(nextArea ?? 'center')
+      return nextArea
+    })
   }
 
   return (
