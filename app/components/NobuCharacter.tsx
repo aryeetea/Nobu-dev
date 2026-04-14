@@ -133,7 +133,7 @@ export default function NobuCharacter({ character, isSpeaking, isListening, shou
         if (cancelled || !canvasRef.current) return
 
         const PIXI = await import('pixi.js') as unknown as PixiModule
-        const { Live2DModel } = (await import('pixi-live2d-display/lib/cubism4')) as Live2DModule
+        const { Live2DModel } = (await import('@guansss/pixi-live2d-display/lib/cubism4')) as Live2DModule
         if (cancelled || !canvasRef.current) return
 
         canvasRef.current.innerHTML = ''
@@ -184,9 +184,13 @@ export default function NobuCharacter({ character, isSpeaking, isListening, shou
       fallbackTimer = setTimeout(loadModel, 900)
     }
 
-    if (shouldLoad) {
-      loadModel()
-    } else if ('IntersectionObserver' in window && canvasRef.current) {
+    if (!shouldLoad) {
+      return () => {
+        cancelled = true
+      }
+    }
+
+    if ('IntersectionObserver' in window && canvasRef.current) {
       observer = new IntersectionObserver((entries) => {
         if (entries.some((entry) => entry.isIntersecting)) {
           observer?.disconnect()

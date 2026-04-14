@@ -4,27 +4,30 @@ export default function NobuRoom() {
       <style>{`
         .nobu-room { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; background: linear-gradient(180deg, #0d0014 0%, #1a0030 56%, #07000d 100%); }
         .nobu-room svg { width: 100%; height: 100%; display: block; }
-        .room-star { animation: room-twinkle 4s ease-in-out infinite; transform-origin: center; }
-        .room-star:nth-of-type(2n) { animation-delay: 1.2s; }
-        .room-star:nth-of-type(3n) { animation-delay: 2.1s; }
         .lamp-glow { animation: lamp-breathe 5s ease-in-out infinite; }
-        .window-glow { animation: sky-shift 9s ease-in-out infinite; }
+        .window-glow { animation: window-breathe 9s ease-in-out infinite; }
+        .rain-line { animation: rain-fall 1.8s linear infinite; opacity: 0.34; }
+        .rain-line:nth-of-type(2n) { animation-delay: 0.4s; }
+        .rain-line:nth-of-type(3n) { animation-delay: 0.9s; }
+        .city-light { animation: city-flicker 6s ease-in-out infinite; }
+        .city-light:nth-of-type(2n) { animation-delay: 1.7s; }
         .steam-line { animation: steam-rise 4.5s ease-in-out infinite; opacity: 0; }
         .steam-line:nth-of-type(2) { animation-delay: 1.3s; }
         .steam-line:nth-of-type(3) { animation-delay: 2.4s; }
-        @keyframes room-twinkle { 0%, 100% { opacity: 0.28; transform: scale(1); } 50% { opacity: 0.9; transform: scale(1.18); } }
         @keyframes lamp-breathe { 0%, 100% { opacity: 0.42; } 50% { opacity: 0.68; } }
-        @keyframes sky-shift { 0%, 100% { opacity: 0.82; } 50% { opacity: 1; } }
+        @keyframes window-breathe { 0%, 100% { opacity: 0.82; } 50% { opacity: 1; } }
+        @keyframes rain-fall { from { transform: translateY(-60px); } to { transform: translateY(340px); } }
+        @keyframes city-flicker { 0%, 100% { opacity: 0.38; } 50% { opacity: 0.78; } }
         @keyframes steam-rise { 0% { opacity: 0; transform: translateY(10px); } 25% { opacity: 0.46; } 100% { opacity: 0; transform: translateY(-28px); } }
       `}</style>
 
       <svg preserveAspectRatio="xMidYMid slice" viewBox="0 0 1440 900" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <radialGradient cx="50%" cy="50%" id="skyGradient" r="75%">
-            <stop offset="0%" stopColor="#7c3aed" stopOpacity="0.5" />
-            <stop offset="45%" stopColor="#1a0030" stopOpacity="0.92" />
+          <linearGradient id="rainyWindowGradient" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#1a0030" />
+            <stop offset="58%" stopColor="#110020" />
             <stop offset="100%" stopColor="#0d0014" />
-          </radialGradient>
+          </linearGradient>
           <radialGradient cx="50%" cy="50%" id="lampGradient" r="50%">
             <stop offset="0%" stopColor="#ffd580" stopOpacity="0.78" />
             <stop offset="55%" stopColor="#ffd580" stopOpacity="0.18" />
@@ -46,15 +49,26 @@ export default function NobuRoom() {
 
         <g transform="translate(440 80)">
           <rect fill="#09000f" height="356" rx="8" stroke="#7c3aed" strokeOpacity="0.32" strokeWidth="4" width="560" />
-          <rect className="window-glow" fill="url(#skyGradient)" height="320" rx="4" width="520" x="20" y="18" />
+          <rect className="window-glow" fill="url(#rainyWindowGradient)" height="320" rx="4" width="520" x="20" y="18" />
           <path d="M300 18v320M20 178h520" stroke="#0d0014" strokeOpacity="0.8" strokeWidth="7" />
-          <circle className="room-star" cx="95" cy="78" fill="#fff" r="2" />
-          <circle className="room-star" cx="176" cy="132" fill="#ffd580" r="1.7" />
-          <circle className="room-star" cx="258" cy="74" fill="#fff" r="2.2" />
-          <circle className="room-star" cx="389" cy="114" fill="#fff" r="1.8" />
-          <circle className="room-star" cx="464" cy="65" fill="#ffd580" r="1.5" />
-          <circle className="room-star" cx="482" cy="220" fill="#fff" r="2" />
-          <path d="M70 268c62-60 126-79 194-50 70 30 125 23 203-42 35 42 59 90 72 144H20c10-21 27-38 50-52Z" fill="#0d0014" opacity="0.78" />
+          <g opacity="0.88">
+            <path d="M56 247h54v91H56zM128 214h64v124h-64zM212 260h48v78h-48zM356 224h58v114h-58zM430 256h70v82h-70z" fill="#07000d" />
+            <rect className="city-light" fill="#ffd580" height="8" opacity="0.6" width="8" x="78" y="270" />
+            <rect className="city-light" fill="#7c3aed" height="8" opacity="0.58" width="8" x="151" y="238" />
+            <rect className="city-light" fill="#ffd580" height="8" opacity="0.5" width="8" x="178" y="292" />
+            <rect className="city-light" fill="#7c3aed" height="8" opacity="0.5" width="8" x="375" y="248" />
+            <rect className="city-light" fill="#ffd580" height="8" opacity="0.58" width="8" x="454" y="282" />
+          </g>
+          <g stroke="#c4b5fd" strokeLinecap="round" strokeOpacity="0.38" strokeWidth="2">
+            <path className="rain-line" d="M78 18l-34 86" />
+            <path className="rain-line" d="M142 8l-34 86" />
+            <path className="rain-line" d="M206 32l-34 86" />
+            <path className="rain-line" d="M274 4l-34 86" />
+            <path className="rain-line" d="M338 24l-34 86" />
+            <path className="rain-line" d="M404 12l-34 86" />
+            <path className="rain-line" d="M476 40l-34 86" />
+          </g>
+          <path d="M70 268c62-60 126-79 194-50 70 30 125 23 203-42 35 42 59 90 72 144H20c10-21 27-38 50-52Z" fill="#0d0014" opacity="0.62" />
         </g>
 
         <g transform="translate(82 258)">

@@ -150,7 +150,10 @@ export default function SettingsPage() {
                 <button
                   className={`option-card ${settings.voiceId === option.voiceId ? 'selected' : ''}`}
                   key={option.id}
-                  onClick={() => updateSettings({ voiceId: option.voiceId })}
+                  onClick={() => updateSettings({
+                    character: option.id === 'male' ? 'male' : 'female',
+                    voiceId: option.voiceId,
+                  })}
                 >
                   <strong>{option.label}</strong>
                   <p className="muted">{option.description}</p>

@@ -31,6 +31,7 @@ export default function OnboardingPage() {
   function completeOnboarding() {
     const settings: NobuSettings = {
       ...DEFAULT_NOBU_SETTINGS,
+      character: voiceId === '5kMbtRSEKIkRZSdXxrZg' ? 'male' : 'female',
       color,
       hasCompletedOnboarding: true,
       hasUsedRename: false,

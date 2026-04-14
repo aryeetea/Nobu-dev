@@ -3,6 +3,7 @@ export type NobuVibeId = 'chill' | 'sharp' | 'playful' | 'professional'
 
 export type NobuSettings = {
   name: string
+  character: 'female' | 'male'
   voiceId: NobuVoiceId
   vibe: NobuVibeId
   color: string
@@ -15,6 +16,7 @@ export const NOBU_NAME_KEY = 'nobuName'
 
 export const DEFAULT_NOBU_SETTINGS: NobuSettings = {
   name: 'Nobu',
+  character: 'female',
   voiceId: 'eXpIbVcVbLo8ZJQDlDnl',
   vibe: 'chill',
   color: '#7c3aed',
@@ -84,9 +86,16 @@ export function loadNobuSettings(): NobuSettings {
       parsed.voiceId
       ?? voiceOptions.find((option) => option.id === parsed.voice)?.voiceId
       ?? DEFAULT_NOBU_SETTINGS.voiceId
+    const migratedCharacter =
+      parsed.character === 'male' || parsed.character === 'female'
+        ? parsed.character
+        : migratedVoiceId === '5kMbtRSEKIkRZSdXxrZg'
+          ? 'male'
+          : DEFAULT_NOBU_SETTINGS.character
     const settings = {
       ...DEFAULT_NOBU_SETTINGS,
       ...parsed,
+      character: migratedCharacter,
       name: parsed.name?.trim() || legacyName || DEFAULT_NOBU_SETTINGS.name,
       voiceId: migratedVoiceId,
     }

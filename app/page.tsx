@@ -120,7 +120,7 @@ export default function Home() {
     isSpeaking,
     isListening,
   } = useConversation()
-  const universeRef = useRef<HTMLDivElement>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const shouldListenForWakeRef = useRef(true)
   const wakeStartingRef = useRef(false)
@@ -129,7 +129,6 @@ export default function Home() {
   const [introVisible, setIntroVisible] = useState(true)
   const [introExiting, setIntroExiting] = useState(false)
   const [wakeListenStatus, setWakeListenStatus] = useState<WakeListenStatus>('idle')
-  const [characterLoadRequested, setCharacterLoadRequested] = useState(false)
 
   function stopWakeListening() {
     shouldListenForWakeRef.current = false
@@ -177,7 +176,7 @@ export default function Home() {
     function syncSettings() {
       const nextSettings = loadNobuSettings()
       setSettings(nextSettings)
-      setCharacter(nextSettings.voiceId === '5kMbtRSEKIkRZSdXxrZg' ? 'male' : 'female')
+      setCharacter(nextSettings.character)
     }
 
     syncSettings()
@@ -189,8 +188,8 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
-    universeRef.current?.style.setProperty('--nobu-color', settings.color)
-    universeRef.current?.style.setProperty('--nobu-rgb', hexToRgb(settings.color))
+    stageRef.current?.style.setProperty('--nobu-color', settings.color)
+    stageRef.current?.style.setProperty('--nobu-rgb', hexToRgb(settings.color))
   }, [settings.color])
 
   useEffect(() => {
@@ -326,20 +325,9 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, settings.name])
 
-  // Removed orb/canvas effect
+  // Removed legacy visual effect
 
   // No longer need to endSession on unmount via ref
-
-  async function handleMeetNobu() {
-    if (status === 'connecting') return
-    setCharacterLoadRequested(true)
-    if (status === 'connected') {
-      await endSession()
-      startWakeListening()
-      return
-    }
-    await startNobuConversation()
-  }
 
   return (
     <>
@@ -353,30 +341,11 @@ export default function Home() {
         .intro-rest.purple { color: #7c3aed; }
         .intro-rest.green { color: #059669; }
         .intro-rest.pink { color: #db2777; }
-        .universe { width: 100%; min-height: 100vh; background: #0d0014; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; }
-        .stars-bg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
-        .orb-system { position: relative; z-index: 2; width: 320px; height: 320px; display: flex; align-items: center; justify-content: center; pointer-events: none; }
-        .atmo { position: absolute; width: 260px; height: 260px; border-radius: 50%; background: radial-gradient(circle at 50% 50%, transparent 38%, rgba(var(--nobu-rgb),0.08) 60%, rgba(var(--nobu-rgb),0.18) 75%, transparent 100%); animation: breathe 4s ease-in-out infinite; }
-        .orb { width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(circle at 32% 30%, #ffffff 0%, var(--nobu-color) 42%, #1a062f 100%); border: 2.5px solid rgba(var(--nobu-rgb),0.42); position: relative; z-index: 3; animation: float 5s ease-in-out infinite; overflow: hidden; box-shadow: 0 0 44px rgba(var(--nobu-rgb),0.28); }
-        .universe.awake .orb { box-shadow: 0 0 80px rgba(var(--nobu-rgb),0.45); animation-duration: 3s; }
-        .orb-shine { position: absolute; top: 20px; left: 24px; width: 55px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.28); transform: rotate(-35deg); filter: blur(2px); }
-        .orb-shine2 { position: absolute; top: 36px; left: 40px; width: 20px; height: 12px; border-radius: 50%; background: rgba(255,255,255,0.18); transform: rotate(-35deg); }
-        .orb-glow { position: absolute; bottom: 30px; right: 28px; width: 40px; height: 40px; border-radius: 50%; background: rgba(var(--nobu-rgb),0.32); filter: blur(8px); }
-        .ring-wrap { position: absolute; width: 290px; height: 290px; z-index: 2; }
-        .ring { position: absolute; top: 50%; left: 50%; width: 290px; height: 60px; margin-left: -145px; margin-top: -30px; border-radius: 50%; border: 1.5px solid rgba(var(--nobu-rgb),0.28); transform: rotateX(75deg); }
-        .ring-inner { position: absolute; top: 50%; left: 50%; width: 240px; height: 46px; margin-left: -120px; margin-top: -23px; border-radius: 50%; border: 1px solid rgba(var(--nobu-rgb),0.24); transform: rotateX(75deg); }
-        .wave-ring { position: absolute; border-radius: 50%; border: 1.5px solid rgba(var(--nobu-rgb),0.3); animation: wave-out 3s ease-out infinite; opacity: 0; }
-        .wave-ring:nth-child(1) { width: 210px; height: 210px; animation-delay: 0s; }
-        .wave-ring:nth-child(2) { width: 240px; height: 240px; animation-delay: 0.6s; }
-        .wave-ring:nth-child(3) { width: 270px; height: 270px; animation-delay: 1.2s; }
-        .particle { position: absolute; border-radius: 50%; animation: orbit linear infinite; top: 50%; left: 50%; }
-        .canvas-wrap { position: absolute; bottom: 80px; left: 0; right: 0; display: flex; justify-content: center; pointer-events: none; z-index: 1; }
+        .nobu-stage { width: 100%; min-height: 100vh; background: #0d0014; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+        .character-stage { width: 100vw; height: 90vh; display: flex; align-items: center; justify-content: center; pointer-events: none; position: relative; z-index: 2; }
         .status { display: flex; align-items: center; gap: 7px; margin-top: 24px; position: relative; z-index: 5; }
         .s-dot { width: 7px; height: 7px; border-radius: 50%; background: #34d399; animation: blink 2s infinite; }
         .s-text { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.6); }
-        .meet-btn { margin-top: 20px; background: var(--nobu-color); color: #fff; border: 1.5px solid rgba(var(--nobu-rgb),0.4); border-radius: 999px; padding: 13px 32px; font-size: 14px; font-weight: 500; cursor: pointer; position: relative; z-index: 6; pointer-events: auto; }
-        .meet-btn.connected { background: #db2777; border-color: rgba(249,168,212,0.5); }
-        .meet-btn:disabled { cursor: wait; opacity: 0.72; }
         .wake-indicator { position: fixed; top: 18px; left: 18px; z-index: 10; display: flex; align-items: center; gap: 8px; border: 1px solid rgba(196,181,253,0.18); border-radius: 999px; background: rgba(13,0,20,0.46); color: rgba(255,255,255,0.58); padding: 7px 10px; font-size: 11px; font-weight: 500; backdrop-filter: blur(10px); }
         .settings-link { position: fixed; top: 18px; right: 18px; z-index: 10; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: 1px solid rgba(196,181,253,0.18); border-radius: 999px; background: rgba(13,0,20,0.46); color: rgba(255,255,255,0.66); text-decoration: none; backdrop-filter: blur(10px); }
         .settings-link:hover { color: #fff; border-color: rgba(var(--nobu-rgb),0.45); }
@@ -384,11 +353,7 @@ export default function Home() {
         .wake-indicator.blocked .wake-indicator-dot,
         .wake-indicator.unsupported .wake-indicator-dot { background: #db2777; box-shadow: 0 0 10px rgba(219,39,119,0.48); }
         .elevenlabs-widget-shell { position: fixed; right: 20px; bottom: 20px; z-index: 20; width: 1px; height: 1px; overflow: visible; opacity: 0.01; }
-        @keyframes float { 0%,100% { transform: translateY(0px); } 50% { transform: translateY(-14px); } }
-        @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
-        @keyframes wave-out { 0% { transform: scale(0.9); opacity: 0.6; } 100% { transform: scale(1.6); opacity: 0; } }
         @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
-        @keyframes orbit { from { transform: rotate(0deg) translateX(130px) rotate(0deg); } to { transform: rotate(360deg) translateX(130px) rotate(-360deg); } }
       `}</style>
 
       {introVisible && (
@@ -406,8 +371,8 @@ export default function Home() {
         </div>
       )}
 
-      {/* NobuCharacter replaces orb system */}
-      <div className={`universe${status === 'connected' ? ' awake' : ''}`} ref={universeRef}>
+      {/* NobuCharacter in the room environment */}
+      <div className={`nobu-stage${status === 'connected' ? ' awake' : ''}`} ref={stageRef}>
         <NobuRoom />
         <Link aria-label="Open Nobu settings" className="settings-link" href="/settings">
           <svg aria-hidden="true" fill="none" height="17" viewBox="0 0 24 24" width="17">
@@ -424,40 +389,22 @@ export default function Home() {
             />
           </svg>
         </Link>
-        <svg className="stars-bg" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="80" cy="60" r="1" fill="white" opacity="0.6"><animate attributeName="opacity" values="0.6;0.1;0.6" dur="3s" repeatCount="indefinite"/></circle>
-          <circle cx="640" cy="40" r="1.2" fill="white" opacity="0.5"><animate attributeName="opacity" values="0.5;0.1;0.5" dur="2.5s" repeatCount="indefinite"/></circle>
-          <circle cx="160" cy="180" r="0.8" fill="white" opacity="0.4"><animate attributeName="opacity" values="0.4;0.1;0.4" dur="4s" repeatCount="indefinite"/></circle>
-          <circle cx="720" cy="150" r="1" fill="white" opacity="0.7"><animate attributeName="opacity" values="0.7;0.2;0.7" dur="2s" repeatCount="indefinite"/></circle>
-          <circle cx="400" cy="30" r="0.8" fill="white" opacity="0.5"><animate attributeName="opacity" values="0.5;0.1;0.5" dur="3.5s" repeatCount="indefinite"/></circle>
-          <circle cx="700" cy="300" r="1" fill="white" opacity="0.4"><animate attributeName="opacity" values="0.4;0.1;0.4" dur="2.8s" repeatCount="indefinite"/></circle>
-          <circle cx="60" cy="350" r="0.8" fill="white" opacity="0.6"><animate attributeName="opacity" values="0.6;0.1;0.6" dur="3.2s" repeatCount="indefinite"/></circle>
-          <circle cx="200" cy="450" r="0.8" fill="var(--nobu-color)" opacity="0.5"><animate attributeName="opacity" values="0.5;0.1;0.5" dur="2.3s" repeatCount="indefinite"/></circle>
-          <circle cx="560" cy="470" r="1" fill="var(--nobu-color)" opacity="0.4"><animate attributeName="opacity" values="0.4;0.1;0.4" dur="3.7s" repeatCount="indefinite"/></circle>
-        </svg>
-        <div style={{ width: '100vw', height: '90vh', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 2 }}>
+        <div className="character-stage">
           <NobuCharacter
             character={character}
             isListening={isListening}
             isSpeaking={isSpeaking}
-            shouldLoad={characterLoadRequested || status === 'connecting' || status === 'connected'}
+            shouldLoad={
+              !introVisible ||
+              status === 'connecting' ||
+              status === 'connected'
+            }
           />
         </div>
         <div className="status">
           <div className="s-dot"></div>
           <span className="s-text">Nobu is here</span>
         </div>
-        <button
-          className={`meet-btn ${status === 'connected' ? 'connected' : ''}`}
-          disabled={status === 'connecting'}
-          onClick={handleMeetNobu}
-        >
-          {status === 'connecting'
-            ? 'Connecting...'
-            : status === 'connected'
-              ? 'End call'
-              : 'Meet your Nobu →'}
-        </button>
       </div>
 
       <div className={`wake-indicator ${wakeListenStatus}`}>
