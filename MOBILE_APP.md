@@ -1,58 +1,70 @@
-# Nobu Mobile Apps
+# Nobu Mobile App
 
-Nobu now has Capacitor native shells for iPhone and Android.
+Nobu is now mobile-first. The website is not the product; the iPhone and Android apps are.
 
-## How It Works
+## Direction
 
-The native apps load your hosted Next.js Nobu app in a native WebView. This is the right setup for the current codebase because Nobu depends on Next API routes, NextAuth, Prisma, and ElevenLabs WebRTC.
+The app should not depend on Netlify by default. Capacitor now loads the bundled app shell unless `CAPACITOR_SERVER_URL` is explicitly provided for temporary testing.
 
-Nobu remains the main app. ScanFit is a fashion capability inside Nobu for outfit feedback, smart sizing, look history, and shopping help.
+For the character renderer, the target is the official Live2D Cubism SDK so Alexia and Asuka stay in their original Live2D format. Do not convert, redraw, flatten, or re-rig creator art into another system unless the creator explicitly approves it.
 
-The bundled `capacitor-web/index.html` file is only a fallback screen. The real app URL comes from `CAPACITOR_SERVER_URL`.
+## Native Live2D Plan
 
-## Production Setup
+1. Download the official Live2D Cubism SDKs from Live2D:
+   - Cubism SDK for Native, iOS
+   - Cubism SDK for Native, Android
 
-1. Deploy the Next.js app to an HTTPS URL.
+2. Place the SDKs outside git first, then copy only the allowed redistributable/framework files into the native projects after confirming the SDK license.
 
-2. Sync that URL into the native projects:
+3. Keep the creator model files unchanged:
+   - `public/models/Alexia`
+   - `public/models/ASUKA`
 
-```bash
-CAPACITOR_SERVER_URL=https://your-nobu-domain.com npm run cap:sync
-```
+4. Add native Live2D views:
+   - iOS: Swift/Metal/OpenGL view controlled from the app.
+   - Android: Kotlin/Java renderer view controlled from the app.
 
-3. Open the iPhone project:
+5. Bridge app commands into native Live2D:
+   - `setCharacter("Alexia" | "Asuka")`
+   - `setExpression(id)`
+   - `playMotion(group, index)`
+   - `setSpeaking(true | false)`
+   - `setListening(true | false)`
+   - `setRoomAction("bed" | "desk" | "chair" | "window" | "center")`
 
-```bash
-npm run cap:open:ios
-```
+## Temporary Remote Testing
 
-4. Open the Android project:
-
-```bash
-npm run cap:open:android
-```
-
-5. Build and submit from Xcode and Android Studio.
-
-## Local Testing
-
-For local device testing, run Next on your network:
+Only use this while debugging:
 
 ```bash
-npm run dev -- -H 0.0.0.0
+CAPACITOR_SERVER_URL=https://heynobu.netlify.app npm run mobile:sync
 ```
 
-Then sync with your Mac's LAN URL:
+For the real app build, leave `CAPACITOR_SERVER_URL` unset:
 
 ```bash
-CAPACITOR_SERVER_URL=http://YOUR_LAN_IP:3000 npm run cap:sync
+npm run mobile:sync
 ```
 
-Use a deployed HTTPS URL for serious testing and app store builds.
+## Local iOS
+
+Open Xcode:
+
+```bash
+npm run mobile:ios
+```
+
+## Local Android
+
+Open Android Studio:
+
+```bash
+npm run mobile:android
+```
 
 ## Voice Permissions
 
-The native projects already include microphone permissions:
+The native projects include microphone permissions:
 
 - iOS: `NSMicrophoneUsageDescription`
 - Android: `RECORD_AUDIO`
@@ -74,21 +86,19 @@ Live2D character model credits: Alexia by [Creator Name], Asuka by [Creator Name
 
 Do not show these credits inside the main app experience unless the model license requires it.
 
-## Live2D Capability Inventory
+## Current Model Inventory
 
-Alexia currently includes:
+Alexia includes:
 
 - 16 expression files: bbt, dyj, h, k, lh, lzx, mj, sq, wh, xxy, y, yf, yfmz, yjys1, yjys2, zs1.
 - 1 motion file: dh.motion3.json.
 - Toggle-style parameters for sunglasses, glasses, outfit, outfit with hat, question mark, sweat, grin, star eyes, dizzy, angry, blush, cry, pose, and eye colors.
 
-Asuka currently includes:
+Asuka includes:
 
 - 4 expression files: Gloom, Happy Sparkle, Star Eyes Toggle, coat toggle.
 - 3 motion files: Hand wave, cry, model preview.
 
-The current renderer displays the models reliably. The next renderer upgrade should expose the creator-provided expressions, motions, and toggles through app state so Nobu can react visually while speaking.
+## App Store Note
 
-## Important App Store Note
-
-Google sign-in and other OAuth providers can be picky inside embedded WebViews. If login becomes the next blocker, the clean path is native OAuth through Capacitor, then passing the authenticated session to the hosted app.
+Google sign-in and other OAuth providers may need native OAuth instead of web OAuth. If login becomes a blocker, use native OAuth and pass the authenticated session into the app.
