@@ -2,7 +2,6 @@
 
 import { useConversation } from '@elevenlabs/react'
 import { Capacitor } from '@capacitor/core'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
@@ -14,7 +13,6 @@ import {
 } from './lib/nobu-settings'
 import { useSession } from 'next-auth/react'
 import NobuCharacter, { type NobuRoomAction } from './components/NobuCharacter'
-import NobuModelControls from './components/NobuModelControls'
 import NobuRoom from './components/NobuRoom'
 import type { Live2DMotionOption } from './lib/live2d-models'
 import { NOBU_ELEVENLABS_AGENT_ID } from './lib/nobu-env'
@@ -133,18 +131,13 @@ export default function Home() {
   const [motionRequest, setMotionRequest] = useState<
     { group: string; id: number; index: number } | null
   >(null)
-  const [modelToggles, setModelToggles] = useState<Record<string, boolean>>({})
   const [autoModelToggles, setAutoModelToggles] = useState<Record<string, boolean>>({})
   const [roomAction, setRoomAction] = useState<NobuRoomAction>('center')
   const [isNativeApp, setIsNativeApp] = useState(false)
   const [hasMounted, setHasMounted] = useState(false)
   const [introVisible, setIntroVisible] = useState(true)
   const [introExiting, setIntroExiting] = useState(false)
-  const [wakeListenStatus, setWakeListenStatus] = useState<WakeListenStatus>('idle')
-  const activeModelToggles = {
-    ...autoModelToggles,
-    ...modelToggles,
-  }
+  const [, setWakeListenStatus] = useState<WakeListenStatus>('idle')
 
   const triggerMotion = useCallback((motion: Live2DMotionOption) => {
     setMotionRequest((current) => ({
@@ -206,17 +199,6 @@ export default function Home() {
     }
   }
 
-  function selectMotion(motion: Live2DMotionOption) {
-    triggerMotion(motion)
-  }
-
-  function changeModelToggle(parameterId: string, enabled: boolean) {
-    setModelToggles((current) => ({
-      ...current,
-      [parameterId]: enabled,
-    }))
-  }
-
   async function startNobuConversation() {
     stopWakeListening()
     try {
@@ -257,7 +239,6 @@ export default function Home() {
       setSettings(nextSettings)
       setCharacter(nextSettings.character)
       setAutoExpressionIndex(null)
-      setModelToggles({})
       setAutoModelToggles({})
       setRoomAction('center')
       lastVisualEmotionRef.current = 'neutral'
@@ -430,19 +411,7 @@ export default function Home() {
         .intro-rest.pink { color: #db2777; }
         .nobu-stage { width: 100%; min-height: 100dvh; background: #eaf6ff; display: flex; flex-direction: column; align-items: center; justify-content: center; isolation: isolate; position: relative; overflow: hidden; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
         .character-stage { inset: 0; pointer-events: none; position: absolute; z-index: 20; }
-        .native-character-pending { align-items: center; bottom: calc(58px + env(safe-area-inset-bottom)); color: rgba(43,66,84,0.64); display: flex; font-size: 12px; font-weight: 800; gap: 7px; justify-content: center; left: 50%; pointer-events: none; position: fixed; transform: translateX(-50%); z-index: 54; }
-        .native-character-pending span:first-child { width: 7px; height: 7px; border-radius: 999px; background: #e85d9b; box-shadow: 0 0 12px rgba(232,93,155,0.34); }
-        .status { bottom: calc(18px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 7px; left: 50%; position: fixed; transform: translateX(-50%); z-index: 55; }
-        .s-dot { width: 7px; height: 7px; border-radius: 50%; background: #34d399; animation: blink 2s infinite; }
-        .s-text { font-size: 13px; font-weight: 800; color: rgba(43,66,84,0.72); text-transform: lowercase; }
-        .wake-indicator { position: fixed; top: calc(14px + env(safe-area-inset-top)); left: 14px; z-index: 70; display: flex; align-items: center; gap: 8px; border: 1px solid rgba(43,66,84,0.14); border-radius: 999px; background: rgba(255,255,255,0.66); color: rgba(43,66,84,0.66); padding: 8px 11px; font-size: 11px; font-weight: 800; backdrop-filter: blur(12px); }
-        .settings-link { position: fixed; top: calc(14px + env(safe-area-inset-top)); right: 14px; z-index: 70; display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; border: 1px solid rgba(43,66,84,0.14); border-radius: 999px; background: rgba(255,255,255,0.66); color: rgba(43,66,84,0.72); text-decoration: none; backdrop-filter: blur(12px); }
-        .settings-link:hover { color: #fff; border-color: rgba(var(--nobu-rgb),0.45); }
-        .wake-indicator-dot { width: 6px; height: 6px; border-radius: 999px; background: #34d399; box-shadow: 0 0 10px rgba(52,211,153,0.6); }
-        .wake-indicator.blocked .wake-indicator-dot,
-        .wake-indicator.unsupported .wake-indicator-dot { background: #db2777; box-shadow: 0 0 10px rgba(219,39,119,0.48); }
         .elevenlabs-widget-shell { position: fixed; right: 20px; bottom: 20px; z-index: 20; width: 1px; height: 1px; overflow: visible; opacity: 0.01; }
-        @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
       `}</style>
 
       {introVisible && (
@@ -463,21 +432,6 @@ export default function Home() {
       {/* NobuCharacter in the room environment */}
       <div className={`nobu-stage${status === 'connected' ? ' awake' : ''}`} ref={stageRef}>
         <NobuRoom character={character} onRoomAction={setRoomAction} />
-        <Link aria-label="Open Nobu settings" className="settings-link" href="/settings">
-          <svg aria-hidden="true" fill="none" height="17" viewBox="0 0 24 24" width="17">
-            <path
-              d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z"
-              stroke="currentColor"
-              strokeWidth="1.8"
-            />
-            <path
-              d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.5-2-3.4-2.4 1a7.8 7.8 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.6A7.8 7.8 0 0 0 7 6.6l-2.4-1-2 3.4 2 1.5a7.6 7.6 0 0 0 0 3l-2 1.5 2 3.4 2.4-1a7.8 7.8 0 0 0 2.6 1.5l.4 2.6h4l.4-2.6a7.8 7.8 0 0 0 2.6-1.5l2.4 1 2-3.4-2-1.5Z"
-              stroke="currentColor"
-              strokeLinejoin="round"
-              strokeWidth="1.8"
-            />
-          </svg>
-        </Link>
         <div className="character-stage">
           {hasMounted && !isNativeApp && (
             <NobuCharacter
@@ -488,43 +442,10 @@ export default function Home() {
               motionRequest={motionRequest}
               roomAction={roomAction}
               shouldLoad
-              toggles={activeModelToggles}
+              toggles={autoModelToggles}
             />
           )}
         </div>
-        {hasMounted && !isNativeApp && (
-          <NobuModelControls
-            character={character}
-            onMotionSelect={selectMotion}
-            onToggleChange={changeModelToggle}
-            toggles={modelToggles}
-          />
-        )}
-        {hasMounted && isNativeApp && (
-          <div className="native-character-pending">
-            <span />
-            <span>Native Live2D engine ready to wire</span>
-          </div>
-        )}
-        <div className="status">
-          <div className="s-dot"></div>
-          <span className="s-text">Nobu is here</span>
-        </div>
-      </div>
-
-      <div className={`wake-indicator ${wakeListenStatus}`}>
-        <span className="wake-indicator-dot" />
-        <span>
-          {wakeListenStatus === 'listening'
-            ? `Listening for "${settings.name}" or "Nobu"`
-            : wakeListenStatus === 'blocked'
-              ? 'Wake word off'
-              : wakeListenStatus === 'unsupported'
-                ? 'Wake word unavailable'
-                : status === 'disconnected'
-                  ? 'Wake word paused'
-                  : 'In conversation'}
-        </span>
       </div>
 
       {/* ElevenLabs widget and script removed. Now handled by React SDK. */}
