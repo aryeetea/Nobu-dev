@@ -3,278 +3,316 @@
 
 import { useEffect, useRef, useState } from 'react'
 
-const CUBISM_CORE_SRC = '/live2d/live2dcubismcore.min.js'
-
-const MODEL_PATHS = {
-  female: '/models/Alexia/Alexia.model3.json',
-  male: '/models/ASUKA/Asuka.model3.json',
-}
+type Character = 'female' | 'male'
+type LoadStatus = 'idle' | 'loading' | 'success' | 'fail'
 
 type Props = {
-  character: 'female' | 'male'
+  character: Character
   isSpeaking: boolean
   isListening: boolean
   shouldLoad?: boolean
 }
 
-type PixiApplication = {
-  view: Node
-  screen: {
-    width: number
-    height: number
-  }
-  stage: {
-    addChild: (child: unknown) => void
-  }
-  destroy: (removeView?: boolean, options?: { children?: boolean }) => void
+type Oml2dInstance = {
+  onLoad: (fn: (status: 'loading' | 'success' | 'fail') => void | Promise<void>) => void
+  clearTips: () => void
+  stopTipsIdle: () => void
+  statusBarClearEvents: () => void
 }
 
-type PixiModule = {
-  Application: new (options: Record<string, unknown>) => PixiApplication
-  Ticker?: unknown
+type Oml2dGlobal = {
+  loadOml2d: (options: Record<string, unknown>) => Oml2dInstance
 }
 
-type NobuLive2DModel = {
-  anchor: {
-    set: (x: number, y?: number) => void
-  }
-  x: number
-  y: number
-  scale: {
-    set: (value: number) => void
-  }
-  motion: (name: string) => void
-  internalModel: {
-    coreModel: {
-      setParameterValueById: (id: string, value: number) => void
-    }
+declare global {
+  interface Window {
+    OML2D?: Oml2dGlobal
   }
 }
 
-type Live2DModule = {
-  Live2DModel: {
-    from: (path: string, options?: Record<string, unknown>) => Promise<NobuLive2DModel>
-    registerTicker?: (tickerClass: unknown) => void
+const MODEL_PATHS: Record<Character, string> = {
+  female: '/models/Alexia/Alexia.model3.json',
+  male: '/models/ASUKA/Asuka.model3.json',
+}
+
+const OML2D_SCRIPT_ID = 'nobu-oml2d-runtime'
+const OML2D_SCRIPT_SRC = '/vendor/oh-my-live2d.min.js'
+
+const CHARACTER_COPY: Record<Character, string> = {
+  female: 'Female Nobu',
+  male: 'Male Nobu',
+}
+
+function isSmallScreen() {
+  return window.matchMedia('(max-width: 760px)').matches
+}
+
+function loadOml2dRuntime() {
+  if (window.OML2D?.loadOml2d) {
+    return Promise.resolve(window.OML2D)
   }
-}
 
-type IdleDeadline = {
-  didTimeout: boolean
-  timeRemaining: () => number
-}
+  const existingScript = document.getElementById(OML2D_SCRIPT_ID) as HTMLScriptElement | null
 
-type IdleWindow = Window & {
-  requestIdleCallback?: (callback: (deadline: IdleDeadline) => void, options?: { timeout?: number }) => number
-  cancelIdleCallback?: (handle: number) => void
-}
-
-let cubismCoreLoadPromise: Promise<void> | null = null
-
-function placeModel(model: NobuLive2DModel, app: PixiApplication) {
-  model.anchor.set(0.5, 1)
-  model.x = app.screen.width / 2
-  model.y = app.screen.height * 0.98
-  const responsiveScale = Math.min(app.screen.width / 900, app.screen.height / 1350)
-  model.scale.set(Math.min(Math.max(responsiveScale, 0.42), 0.82))
-}
-
-function startIdleMotion(model: NobuLive2DModel) {
-  const motionGroups = ['Idle', 'idle', '']
-
-  for (const group of motionGroups) {
-    try {
-      model.motion(group)
-      return
-    } catch {
-      // Some model files do not define a named idle motion.
-    }
+  if (existingScript?.dataset.loaded === 'true' && window.OML2D?.loadOml2d) {
+    return Promise.resolve(window.OML2D)
   }
-}
 
-function setModelParameter(model: NobuLive2DModel, parameterId: string, value: number) {
-  try {
-    model.internalModel.coreModel.setParameterValueById(parameterId, value)
-  } catch {
-    // Models can vary in which optional expression parameters they expose.
-  }
-}
-
-function loadCubismCore() {
-  if (cubismCoreLoadPromise) return cubismCoreLoadPromise
-
-  cubismCoreLoadPromise = new Promise((resolve, reject) => {
-    if ((window as { Live2DCubismCore?: unknown }).Live2DCubismCore) {
-      resolve()
-      return
-    }
-
-    const existingScript = document.querySelector<HTMLScriptElement>(
-      `script[src="${CUBISM_CORE_SRC}"]`
-    )
-
-    if (existingScript?.dataset.loaded === 'true') {
-      resolve()
-      return
-    }
-
+  return new Promise<Oml2dGlobal>((resolve, reject) => {
     const script = existingScript ?? document.createElement('script')
-    script.src = CUBISM_CORE_SRC
+
+    script.id = OML2D_SCRIPT_ID
+    script.src = OML2D_SCRIPT_SRC
     script.async = true
+
     script.onload = () => {
       script.dataset.loaded = 'true'
-      resolve()
+      if (window.OML2D?.loadOml2d) {
+        resolve(window.OML2D)
+      } else {
+        reject(new Error('The Live2D runtime loaded, but OML2D was not available.'))
+      }
     }
+
     script.onerror = () => {
-      cubismCoreLoadPromise = null
-      reject(new Error('Unable to load Live2D Cubism Core.'))
+      reject(new Error('The Live2D runtime script could not be loaded.'))
     }
 
     if (!existingScript) {
       document.head.appendChild(script)
     }
   })
-
-  return cubismCoreLoadPromise
 }
 
-export default function NobuCharacter({ character, isSpeaking, isListening, shouldLoad = false }: Props) {
-  const canvasRef = useRef<HTMLDivElement>(null)
-  const modelRef = useRef<NobuLive2DModel | null>(null)
-  const appRef = useRef<PixiApplication | null>(null)
-  const hasLoadedRef = useRef(false)
-  const shouldLoadRef = useRef(shouldLoad)
-  const [loadError, setLoadError] = useState('')
+export default function NobuCharacter({
+  character,
+  isSpeaking,
+  isListening,
+  shouldLoad = true,
+}: Props) {
+  const hostRef = useRef<HTMLDivElement>(null)
+  const instanceRef = useRef<Oml2dInstance | null>(null)
+  const [loadStatus, setLoadStatus] = useState<LoadStatus>('idle')
+  const [errorMessage, setErrorMessage] = useState('')
 
   useEffect(() => {
-    shouldLoadRef.current = shouldLoad
-  }, [shouldLoad])
+    if (!shouldLoad || !hostRef.current) {
+      return
+    }
 
-  useEffect(() => {
-    let idleTimer: ReturnType<typeof setInterval> | undefined
-    let idleHandle: number | undefined
-    let fallbackTimer: ReturnType<typeof setTimeout> | undefined
-    let resizeHandler: (() => void) | undefined
     let cancelled = false
+    const host = hostRef.current
+    const smallScreen = isSmallScreen()
 
-    async function loadModel() {
-      if (hasLoadedRef.current) return
-      hasLoadedRef.current = true
-      setLoadError('')
+    async function loadCharacter() {
+      setLoadStatus('loading')
+      setErrorMessage('')
+      host.replaceChildren()
 
       try {
-        await loadCubismCore()
-        if (cancelled || !canvasRef.current) return
+        const { loadOml2d } = await loadOml2dRuntime()
 
-        const PIXI = await import('pixi.js') as unknown as PixiModule
-        ;(window as unknown as { PIXI: PixiModule }).PIXI = PIXI
-        const { Live2DModel } = (await import('@guansss/pixi-live2d-display/cubism4')) as Live2DModule
-        if (PIXI.Ticker) {
-          Live2DModel.registerTicker?.(PIXI.Ticker)
-        }
-        if (cancelled || !canvasRef.current) return
+        if (cancelled || !hostRef.current) return
 
-        canvasRef.current.innerHTML = ''
-        const app = new PIXI.Application({
-          width: window.innerWidth,
-          height: window.innerHeight,
-          transparent: true,
-          backgroundAlpha: 0,
-          resizeTo: window,
+        const stageWidth = smallScreen ? 'min(92vw, 390px)' : 'min(54vw, 560px)'
+        const stageHeight = smallScreen ? '72vh' : '82vh'
+        const leftOffset = smallScreen
+          ? 'calc(50% - min(92vw, 390px) / 2)'
+          : 'calc(50% - min(54vw, 560px) / 2)'
+
+        const instance = loadOml2d({
+          parentElement: hostRef.current,
+          mobileDisplay: true,
+          primaryColor: '#7c3aed',
+          sayHello: false,
+          transitionTime: 250,
+          initialStatus: 'active',
+          stageStyle: {
+            bottom: smallScreen ? '8vh' : '0',
+            height: stageHeight,
+            left: leftOffset,
+            pointerEvents: 'none',
+            position: 'absolute',
+            right: 'auto',
+            width: stageWidth,
+            zIndex: '2',
+          },
+          statusBar: {
+            disable: true,
+          },
+          menus: {
+            disable: true,
+          },
+          tips: {
+            style: { display: 'none' },
+            mobileStyle: { display: 'none' },
+            idleTips: {
+              message: [],
+              wordTheDay: false,
+            },
+            welcomeTips: {
+              message: {
+                daybreak: '',
+                morning: '',
+                noon: '',
+                afternoon: '',
+                dusk: '',
+                night: '',
+                lateNight: '',
+                weeHours: '',
+              },
+            },
+            copyTips: {
+              message: [],
+            },
+          },
+          models: [
+            {
+              name: CHARACTER_COPY[character],
+              path: MODEL_PATHS[character],
+              scale: smallScreen ? 0.075 : 0.09,
+              mobileScale: 0.075,
+              position: smallScreen ? [0, 70] : [0, 70],
+              mobilePosition: [0, 80],
+              motionPreloadStrategy: 'NONE',
+              stageStyle: {
+                bottom: smallScreen ? '8vh' : '0',
+                height: stageHeight,
+                left: leftOffset,
+                pointerEvents: 'none',
+                position: 'absolute',
+                right: 'auto',
+                width: stageWidth,
+                zIndex: '2',
+              },
+              mobileStageStyle: {
+                bottom: '8vh',
+                height: stageHeight,
+                left: leftOffset,
+                pointerEvents: 'none',
+                position: 'absolute',
+                right: 'auto',
+                width: stageWidth,
+                zIndex: '2',
+              },
+            },
+          ],
+        }) as Oml2dInstance
+
+        instanceRef.current = instance
+        instance.onLoad((status) => {
+          if (cancelled) return
+          setLoadStatus(status)
+          if (status === 'fail') {
+            setErrorMessage(`${CHARACTER_COPY[character]} could not load.`)
+          }
+          if (status === 'success') {
+            instance.clearTips()
+            instance.stopTipsIdle()
+            instance.statusBarClearEvents()
+          }
         })
-        appRef.current = app
-        canvasRef.current.appendChild(app.view)
-        const model = await Live2DModel.from(MODEL_PATHS[character], {
-          autoInteract: false,
-          autoUpdate: true,
-        })
-        if (cancelled) {
-          app.destroy(true, { children: true })
-          return
-        }
-
-        placeModel(model, app)
-        app.stage.addChild(model)
-        modelRef.current = model
-        startIdleMotion(model)
-        resizeHandler = () => placeModel(model, app)
-        window.addEventListener('resize', resizeHandler)
-        idleTimer = setInterval(() => {
-          startIdleMotion(model)
-        }, 12000)
       } catch (error) {
-        hasLoadedRef.current = false
-        setLoadError(error instanceof Error ? error.message : 'Unable to load Nobu Live2D model.')
-        console.error('Unable to load Nobu Live2D model:', error)
+        if (cancelled) return
+        console.error('Unable to load Nobu Live2D character:', error)
+        setLoadStatus('fail')
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : `${CHARACTER_COPY[character]} could not load.`
+        )
       }
     }
 
-    function loadWhenIdle() {
-      if (shouldLoadRef.current) {
-        loadModel()
-        return
-      }
-
-      const idleWindow = window as IdleWindow
-      if (idleWindow.requestIdleCallback) {
-        idleHandle = idleWindow.requestIdleCallback(() => loadModel(), { timeout: 2500 })
-        return
-      }
-
-      fallbackTimer = setTimeout(loadModel, 900)
-    }
-
-    if (!shouldLoad) {
-      return () => {
-        cancelled = true
-      }
-    }
-
-    loadWhenIdle()
+    loadCharacter()
 
     return () => {
       cancelled = true
-      if (idleHandle !== undefined) {
-        ;(window as IdleWindow).cancelIdleCallback?.(idleHandle)
-      }
-      if (fallbackTimer) clearTimeout(fallbackTimer)
-      if (idleTimer) clearInterval(idleTimer)
-      if (resizeHandler) window.removeEventListener('resize', resizeHandler)
-      if (appRef.current) appRef.current.destroy(true, { children: true })
-      appRef.current = null
-      modelRef.current = null
-      hasLoadedRef.current = false
+      instanceRef.current?.clearTips()
+      instanceRef.current?.stopTipsIdle()
+      instanceRef.current?.statusBarClearEvents()
+      instanceRef.current = null
+      host.replaceChildren()
     }
   }, [character, shouldLoad])
 
-  // Animate mouth and listening
-  useEffect(() => {
-    const model = modelRef.current
-    if (!model) return
-    // Speaking: open mouth
-    setModelParameter(model, 'ParamMouthOpenY', isSpeaking ? 1 : 0)
-    // Listening: animate head/eyes
-    if (isListening) {
-      setModelParameter(model, 'ParamAngleY', Math.random() * 30 - 15)
-      setModelParameter(model, 'ParamEyeBallX', Math.random() * 0.6 - 0.3)
-    } else {
-      setModelParameter(model, 'ParamAngleY', 0)
-      setModelParameter(model, 'ParamEyeBallX', 0)
-    }
-  }, [isSpeaking, isListening])
-
   return (
-    <>
-      <div
-        ref={canvasRef}
-        style={{ width: '100vw', height: '90vh', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', position: 'absolute', top: 0, left: 0, zIndex: 2 }}
-      />
-      {loadError && (
-        <div
-          style={{ position: 'absolute', bottom: 72, left: '50%', transform: 'translateX(-50%)', zIndex: 6, color: 'rgba(255,255,255,0.7)', fontSize: 12, maxWidth: 'min(520px, calc(100vw - 32px))', textAlign: 'center', pointerEvents: 'none' }}
-        >
-          Nobu character could not load: {loadError}
+    <div
+      aria-busy={loadStatus === 'loading'}
+      aria-label={`${CHARACTER_COPY[character]} Live2D character`}
+      className={[
+        'nobu-live2d',
+        isListening ? 'is-listening' : '',
+        isSpeaking ? 'is-speaking' : '',
+      ].join(' ')}
+    >
+      <style>{`
+        .nobu-live2d {
+          bottom: 0;
+          height: 90vh;
+          left: 0;
+          pointer-events: none;
+          position: absolute;
+          width: 100vw;
+          z-index: 2;
+        }
+
+        .nobu-live2d-host {
+          bottom: 0;
+          height: 100%;
+          left: 0;
+          position: absolute;
+          width: 100%;
+        }
+
+        .nobu-live2d.is-listening {
+          filter: drop-shadow(0 0 18px rgba(124, 58, 237, 0.3));
+        }
+
+        .nobu-live2d.is-speaking {
+          filter: drop-shadow(0 0 24px rgba(255, 213, 128, 0.22));
+        }
+
+        .nobu-live2d-message {
+          bottom: 17vh;
+          color: rgba(255,255,255,0.64);
+          font-size: 12px;
+          font-weight: 600;
+          left: 50%;
+          letter-spacing: 0;
+          position: absolute;
+          text-align: center;
+          transform: translateX(-50%);
+          z-index: 3;
+        }
+
+        .nobu-live2d-message.error {
+          color: #ffd580;
+          width: min(420px, calc(100vw - 32px));
+        }
+
+        @media (max-width: 760px) {
+          .nobu-live2d {
+            height: 84vh;
+          }
+
+          .nobu-live2d-message {
+            bottom: 18vh;
+          }
+        }
+      `}</style>
+
+      <div className="nobu-live2d-host" ref={hostRef} />
+
+      {shouldLoad && loadStatus === 'loading' && (
+        <div className="nobu-live2d-message">Loading {CHARACTER_COPY[character]}</div>
+      )}
+
+      {loadStatus === 'fail' && (
+        <div className="nobu-live2d-message error">
+          {errorMessage || `${CHARACTER_COPY[character]} could not load.`}
         </div>
       )}
-    </>
+    </div>
   )
 }
