@@ -179,6 +179,12 @@ Asuka includes:
 - 4 expression files: Gloom, Happy Sparkle, Star Eyes Toggle, coat toggle.
 - 3 motion files: Hand wave, cry, model preview.
 
-## App Store Note
+## Account Login
 
-Google sign-in and other OAuth providers may need native OAuth instead of web OAuth. If login becomes a blocker, use native OAuth and pass the authenticated session into the app.
+Nobu uses simple account login:
+
+- username
+- password
+- optional display name during account creation
+
+Google sign-in is not part of the main Nobu flow. Passwords are stored as salted hashes. Add email recovery before a public App Store launch.

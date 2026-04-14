@@ -1,6 +1,7 @@
 'use client'
 
 import { useConversation } from '@elevenlabs/react'
+import { Capacitor } from '@capacitor/core'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -135,6 +136,8 @@ export default function Home() {
   const [modelToggles, setModelToggles] = useState<Record<string, boolean>>({})
   const [autoModelToggles, setAutoModelToggles] = useState<Record<string, boolean>>({})
   const [roomAction, setRoomAction] = useState<NobuRoomAction>('center')
+  const [isNativeApp, setIsNativeApp] = useState(false)
+  const [hasMounted, setHasMounted] = useState(false)
   const [introVisible, setIntroVisible] = useState(true)
   const [introExiting, setIntroExiting] = useState(false)
   const [wakeListenStatus, setWakeListenStatus] = useState<WakeListenStatus>('idle')
@@ -242,6 +245,11 @@ export default function Home() {
   }
 
   // No longer need startConversationRef
+
+  useEffect(() => {
+    setIsNativeApp(Capacitor.isNativePlatform())
+    setHasMounted(true)
+  }, [])
 
   useEffect(() => {
     function syncSettings() {
@@ -422,6 +430,8 @@ export default function Home() {
         .intro-rest.pink { color: #db2777; }
         .nobu-stage { width: 100%; min-height: 100dvh; background: #eaf6ff; display: flex; flex-direction: column; align-items: center; justify-content: center; isolation: isolate; position: relative; overflow: hidden; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
         .character-stage { inset: 0; pointer-events: none; position: absolute; z-index: 20; }
+        .native-character-pending { align-items: center; bottom: calc(58px + env(safe-area-inset-bottom)); color: rgba(43,66,84,0.64); display: flex; font-size: 12px; font-weight: 800; gap: 7px; justify-content: center; left: 50%; pointer-events: none; position: fixed; transform: translateX(-50%); z-index: 54; }
+        .native-character-pending span:first-child { width: 7px; height: 7px; border-radius: 999px; background: #e85d9b; box-shadow: 0 0 12px rgba(232,93,155,0.34); }
         .status { bottom: calc(18px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 7px; left: 50%; position: fixed; transform: translateX(-50%); z-index: 55; }
         .s-dot { width: 7px; height: 7px; border-radius: 50%; background: #34d399; animation: blink 2s infinite; }
         .s-text { font-size: 13px; font-weight: 800; color: rgba(43,66,84,0.72); text-transform: lowercase; }
@@ -469,23 +479,33 @@ export default function Home() {
           </svg>
         </Link>
         <div className="character-stage">
-          <NobuCharacter
-            character={character}
-            expressionIndex={autoExpressionIndex}
-            isListening={isListening}
-            isSpeaking={isSpeaking}
-            motionRequest={motionRequest}
-            roomAction={roomAction}
-            shouldLoad
-            toggles={activeModelToggles}
-          />
+          {hasMounted && !isNativeApp && (
+            <NobuCharacter
+              character={character}
+              expressionIndex={autoExpressionIndex}
+              isListening={isListening}
+              isSpeaking={isSpeaking}
+              motionRequest={motionRequest}
+              roomAction={roomAction}
+              shouldLoad
+              toggles={activeModelToggles}
+            />
+          )}
         </div>
-        <NobuModelControls
-          character={character}
-          onMotionSelect={selectMotion}
-          onToggleChange={changeModelToggle}
-          toggles={modelToggles}
-        />
+        {hasMounted && !isNativeApp && (
+          <NobuModelControls
+            character={character}
+            onMotionSelect={selectMotion}
+            onToggleChange={changeModelToggle}
+            toggles={modelToggles}
+          />
+        )}
+        {hasMounted && isNativeApp && (
+          <div className="native-character-pending">
+            <span />
+            <span>Native Live2D engine ready to wire</span>
+          </div>
+        )}
         <div className="status">
           <div className="s-dot"></div>
           <span className="s-text">Nobu is here</span>
