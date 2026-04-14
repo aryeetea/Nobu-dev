@@ -13,7 +13,9 @@ import {
 } from './lib/nobu-settings'
 import { useSession } from 'next-auth/react'
 import NobuCharacter from './components/NobuCharacter'
+import NobuModelControls from './components/NobuModelControls'
 import NobuRoom from './components/NobuRoom'
+import type { Live2DMotionOption } from './lib/live2d-models'
 
 const AGENT_ID = 'agent_0301knzm0v3efm3th0qnb84gkqrg'
 
@@ -109,6 +111,11 @@ export default function Home() {
   const wakeStartingRef = useRef(false)
   const [settings, setSettings] = useState<NobuSettings>(DEFAULT_NOBU_SETTINGS)
   const [character, setCharacter] = useState<'female' | 'male'>('female')
+  const [expressionIndex, setExpressionIndex] = useState<number | null>(null)
+  const [motionRequest, setMotionRequest] = useState<
+    { group: string; id: number; index: number } | null
+  >(null)
+  const [modelToggles, setModelToggles] = useState<Record<string, boolean>>({})
   const [introVisible, setIntroVisible] = useState(true)
   const [introExiting, setIntroExiting] = useState(false)
   const [wakeListenStatus, setWakeListenStatus] = useState<WakeListenStatus>('idle')
@@ -141,6 +148,21 @@ export default function Home() {
     }
   }
 
+  function selectMotion(motion: Live2DMotionOption) {
+    setMotionRequest((current) => ({
+      group: motion.group,
+      id: (current?.id ?? 0) + 1,
+      index: motion.index,
+    }))
+  }
+
+  function changeModelToggle(parameterId: string, enabled: boolean) {
+    setModelToggles((current) => ({
+      ...current,
+      [parameterId]: enabled,
+    }))
+  }
+
   async function startNobuConversation() {
     stopWakeListening()
     try {
@@ -168,6 +190,8 @@ export default function Home() {
       const nextSettings = loadNobuSettings()
       setSettings(nextSettings)
       setCharacter(nextSettings.character)
+      setExpressionIndex(null)
+      setModelToggles({})
     }
 
     syncSettings()
@@ -384,15 +408,26 @@ export default function Home() {
         <div className="character-stage">
           <NobuCharacter
             character={character}
+            expressionIndex={expressionIndex}
             isListening={isListening}
             isSpeaking={isSpeaking}
+            motionRequest={motionRequest}
             shouldLoad={
               !introVisible ||
               status === 'connecting' ||
               status === 'connected'
             }
+            toggles={modelToggles}
           />
         </div>
+        <NobuModelControls
+          character={character}
+          onExpressionSelect={setExpressionIndex}
+          onMotionSelect={selectMotion}
+          onToggleChange={changeModelToggle}
+          selectedExpressionIndex={expressionIndex}
+          toggles={modelToggles}
+        />
         <div className="status">
           <div className="s-dot"></div>
           <span className="s-text">Nobu is here</span>

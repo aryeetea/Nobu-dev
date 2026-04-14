@@ -6,7 +6,40 @@
 			"Asuka.4096/texture_00.png"
 		],
 		"Physics": "Asuka.physics3.json",
-		"DisplayInfo": "Asuka.cdi3.json"
+		"DisplayInfo": "Asuka.cdi3.json",
+		"Expressions": [
+			{
+				"Name": "Gloom",
+				"File": "EXPRESSIONS/Gloom.exp3.json"
+			},
+			{
+				"Name": "Happy Sparkle",
+				"File": "EXPRESSIONS/Happy Sparkle.exp3.json"
+			},
+			{
+				"Name": "Star Eyes Toggle",
+				"File": "EXPRESSIONS/Star Eyes Toggle.exp3.json"
+			},
+			{
+				"Name": "Coat Toggle",
+				"File": "EXPRESSIONS/coat toggle.exp3.json"
+			}
+		],
+		"Motions": {
+			"ANIMATIONS": [
+				{
+					"File": "ANIMATIONS/Hand wave.motion3.json"
+				},
+				{
+					"File": "ANIMATIONS/cry.motion3.json"
+				}
+			],
+			"Preview": [
+				{
+					"File": "MODEL PREVIEW.motion3.json"
+				}
+			]
+		}
 	},
 	"Groups": [
 		{

@@ -57,6 +57,38 @@ The native projects already include microphone permissions:
 - iOS: `NSMicrophoneUsageDescription`
 - Android: `RECORD_AUDIO`
 
+## Live2D Model Credits
+
+Nobu uses third-party Live2D character models. Do not submit the app to the App Store or Play Store until each model has confirmed commercial/app usage rights and an accurate creator credit.
+
+Current credit placeholders:
+
+- Alexia: creator/source/license still need to be confirmed.
+- Asuka: creator/source/license still need to be confirmed.
+
+Recommended app listing credit wording once the creator names are known:
+
+```text
+Live2D character model credits: Alexia by [Creator Name], Asuka by [Creator Name]. Used with permission.
+```
+
+Do not show these credits inside the main app experience unless the model license requires it.
+
+## Live2D Capability Inventory
+
+Alexia currently includes:
+
+- 16 expression files: bbt, dyj, h, k, lh, lzx, mj, sq, wh, xxy, y, yf, yfmz, yjys1, yjys2, zs1.
+- 1 motion file: dh.motion3.json.
+- Toggle-style parameters for sunglasses, glasses, outfit, outfit with hat, question mark, sweat, grin, star eyes, dizzy, angry, blush, cry, pose, and eye colors.
+
+Asuka currently includes:
+
+- 4 expression files: Gloom, Happy Sparkle, Star Eyes Toggle, coat toggle.
+- 3 motion files: Hand wave, cry, model preview.
+
+The current renderer displays the models reliably. The next renderer upgrade should expose the creator-provided expressions, motions, and toggles through app state so Nobu can react visually while speaking.
+
 ## Important App Store Note
 
 Google sign-in and other OAuth providers can be picky inside embedded WebViews. If login becomes the next blocker, the clean path is native OAuth through Capacitor, then passing the authenticated session to the hosted app.

@@ -2,144 +2,135 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { live2dModels } from '../lib/live2d-models'
 
 type Character = 'female' | 'male'
 type LoadStatus = 'idle' | 'loading' | 'success' | 'fail'
 export type NobuRoomAction = 'center' | 'desk' | 'chair' | 'bed' | 'shelf'
 
+type MotionRequest = {
+  group: string
+  id: number
+  index: number
+}
+
 type Props = {
   character: Character
+  expressionIndex?: number | null
   isSpeaking: boolean
   isListening: boolean
-  roomAction?: NobuRoomAction
+  motionRequest?: MotionRequest | null
   shouldLoad?: boolean
+  toggles?: Record<string, boolean>
 }
 
-type Oml2dInstance = {
-  onLoad: (fn: (status: 'loading' | 'success' | 'fail') => void | Promise<void>) => void
-  clearTips: () => void
-  stopTipsIdle: () => void
-  statusBarClearEvents: () => void
-  setModelPosition: (position: { x?: number; y?: number }) => void
-  setModelRotation: (rotation: number) => void
-  setModelScale: (scale: number) => void
+type PixiApp = {
+  destroy: (removeView?: boolean, options?: { baseTexture?: boolean; children?: boolean; texture?: boolean }) => void
+  renderer: {
+    resize: (width: number, height: number) => void
+  }
+  screen: {
+    height: number
+    width: number
+  }
+  stage: {
+    addChild: (child: Live2DModelInstance) => void
+  }
+  ticker: {
+    add: (fn: () => void) => void
+    remove: (fn: () => void) => void
+  }
+  view: HTMLCanvasElement
 }
 
-type Oml2dGlobal = {
-  loadOml2d: (options: Record<string, unknown>) => Oml2dInstance
+type PixiModule = {
+  Application: new (options: Record<string, unknown>) => PixiApp
+  Ticker?: unknown
+}
+
+type Live2DModelInstance = {
+  anchor?: {
+    set: (x: number, y?: number) => void
+  }
+  destroy?: () => void
+  expression: (id?: number | string) => Promise<boolean>
+  height: number
+  internalModel?: {
+    coreModel?: {
+      getParameterValueById?: (parameterId: string) => number
+      setParameterValueById?: (parameterId: string, value: number, weight?: number) => void
+    }
+  }
+  motion: (group: string, index?: number, priority?: number) => Promise<boolean>
+  rotation: number
+  scale: {
+    set: (x: number, y?: number) => void
+  }
+  width: number
+  x: number
+  y: number
+}
+
+type Live2DModule = {
+  Live2DModel: {
+    from: (path: string, options?: Record<string, unknown>) => Promise<Live2DModelInstance>
+    registerTicker?: (ticker: unknown) => void
+  }
+  MotionPriority?: {
+    FORCE?: number
+    NORMAL?: number
+  }
+  cubism4Ready?: () => Promise<void>
 }
 
 declare global {
   interface Window {
-    OML2D?: Oml2dGlobal
+    Live2DCubismCore?: unknown
+    PIXI?: unknown
   }
 }
 
-const MODEL_PATHS: Record<Character, string> = {
-  female: '/models/Alexia/Alexia.model3.json',
-  male: '/models/ASUKA/Asuka.model3.json',
-}
-
-const OML2D_SCRIPT_ID = 'nobu-oml2d-runtime'
-const OML2D_SCRIPT_SRC = '/vendor/oh-my-live2d.min.js'
-const OML2D_ELEMENT_IDS = ['oml2d-stage', 'oml2d-statusBar', 'oml2d-tips', 'oml2d-menus']
+const CUBISM_CORE_SCRIPT_ID = 'nobu-cubism4-core'
+const CUBISM_CORE_SCRIPT_SRC = '/live2d/live2dcubismcore.min.js'
 
 const CHARACTER_COPY: Record<Character, string> = {
-  female: 'Female Nobu',
-  male: 'Male Nobu',
+  female: 'Alexia',
+  male: 'Asuka',
 }
 
 function isSmallScreen() {
   return window.matchMedia('(max-width: 760px)').matches
 }
 
-function getRoomPose(action: NobuRoomAction, smallScreen: boolean) {
-  const baseScale = smallScreen ? 0.075 : 0.09
-
-  switch (action) {
-    case 'desk':
-      return {
-        position: smallScreen ? { x: 70, y: 88 } : { x: 128, y: 78 },
-        rotation: 0,
-        scale: baseScale,
-      }
-    case 'chair':
-      return {
-        position: smallScreen ? { x: 90, y: 100 } : { x: 168, y: 92 },
-        rotation: -2,
-        scale: baseScale * 0.96,
-      }
-    case 'bed':
-      return {
-        position: smallScreen ? { x: -78, y: 112 } : { x: -190, y: 110 },
-        rotation: -7,
-        scale: baseScale * 0.86,
-      }
-    case 'shelf':
-      return {
-        position: smallScreen ? { x: -84, y: 84 } : { x: -202, y: 78 },
-        rotation: 2,
-        scale: baseScale * 0.98,
-      }
-    case 'center':
-    default:
-      return {
-        position: smallScreen ? { x: 0, y: 80 } : { x: 0, y: 70 },
-        rotation: 0,
-        scale: baseScale,
-      }
-  }
-}
-
-function applyRoomPose(instance: Oml2dInstance, action: NobuRoomAction) {
-  const pose = getRoomPose(action, isSmallScreen())
-  instance.setModelPosition(pose.position)
-  instance.setModelRotation(pose.rotation)
-  instance.setModelScale(pose.scale)
-}
-
-function removeOml2dElements() {
-  for (const id of OML2D_ELEMENT_IDS) {
-    document.getElementById(id)?.remove()
-  }
-}
-
-function moveOml2dStage(host: HTMLElement) {
-  const stage = document.getElementById('oml2d-stage')
-  if (stage && stage.parentElement !== host) {
-    host.appendChild(stage)
-  }
-}
-
-function loadOml2dRuntime() {
-  if (window.OML2D?.loadOml2d) {
-    return Promise.resolve(window.OML2D)
+function loadCubismCore() {
+  if (window.Live2DCubismCore) {
+    return Promise.resolve()
   }
 
-  const existingScript = document.getElementById(OML2D_SCRIPT_ID) as HTMLScriptElement | null
+  const existingScript = document.getElementById(CUBISM_CORE_SCRIPT_ID) as HTMLScriptElement | null
 
-  if (existingScript?.dataset.loaded === 'true' && window.OML2D?.loadOml2d) {
-    return Promise.resolve(window.OML2D)
+  if (existingScript?.dataset.loaded === 'true' && window.Live2DCubismCore) {
+    return Promise.resolve()
   }
 
-  return new Promise<Oml2dGlobal>((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     const script = existingScript ?? document.createElement('script')
 
-    script.id = OML2D_SCRIPT_ID
-    script.src = OML2D_SCRIPT_SRC
+    script.id = CUBISM_CORE_SCRIPT_ID
+    script.src = CUBISM_CORE_SCRIPT_SRC
     script.async = true
 
     script.onload = () => {
       script.dataset.loaded = 'true'
-      if (window.OML2D?.loadOml2d) {
-        resolve(window.OML2D)
+      if (window.Live2DCubismCore) {
+        resolve()
       } else {
-        reject(new Error('The Live2D runtime loaded, but OML2D was not available.'))
+        reject(new Error('Cubism 4 core loaded, but Live2DCubismCore was not available.'))
       }
     }
 
     script.onerror = () => {
-      reject(new Error('The Live2D runtime script could not be loaded.'))
+      reject(new Error('Cubism 4 core script could not be loaded.'))
     }
 
     if (!existingScript) {
@@ -148,22 +139,60 @@ function loadOml2dRuntime() {
   })
 }
 
+function resizeApp(app: PixiApp, host: HTMLElement) {
+  const rect = host.getBoundingClientRect()
+  app.renderer.resize(Math.max(1, Math.floor(rect.width)), Math.max(1, Math.floor(rect.height)))
+}
+
+function placeModel(model: Live2DModelInstance, app: PixiApp) {
+  const smallScreen = isSmallScreen()
+  const screenWidth = app.screen.width
+  const screenHeight = app.screen.height
+  const targetHeight = screenHeight * (smallScreen ? 0.78 : 0.82)
+  const targetWidth = screenWidth * (smallScreen ? 0.88 : 0.48)
+
+  model.anchor?.set(0.5, 1)
+  model.rotation = 0
+  model.scale.set(1)
+
+  const rawWidth = Math.max(1, model.width)
+  const rawHeight = Math.max(1, model.height)
+  const scale = Math.min(targetHeight / rawHeight, targetWidth / rawWidth)
+
+  model.scale.set(scale)
+  model.x = screenWidth / 2
+  model.y = screenHeight * (smallScreen ? 0.94 : 0.96)
+}
+
+function applyToggles(model: Live2DModelInstance | null, toggles: Record<string, boolean>) {
+  const coreModel = model?.internalModel?.coreModel
+  if (!coreModel?.setParameterValueById) return
+
+  for (const [parameterId, enabled] of Object.entries(toggles)) {
+    coreModel.setParameterValueById(parameterId, enabled ? 1 : 0, 1)
+  }
+}
+
 export default function NobuCharacter({
   character,
+  expressionIndex = null,
   isSpeaking,
   isListening,
-  roomAction = 'center',
+  motionRequest = null,
   shouldLoad = true,
+  toggles = {},
 }: Props) {
+  const appRef = useRef<PixiApp | null>(null)
   const hostRef = useRef<HTMLDivElement>(null)
-  const instanceRef = useRef<Oml2dInstance | null>(null)
-  const roomActionRef = useRef(roomAction)
+  const modelRef = useRef<Live2DModelInstance | null>(null)
+  const togglesRef = useRef(toggles)
   const [loadStatus, setLoadStatus] = useState<LoadStatus>('idle')
   const [errorMessage, setErrorMessage] = useState('')
 
   useEffect(() => {
-    roomActionRef.current = roomAction
-  }, [roomAction])
+    togglesRef.current = toggles
+    applyToggles(modelRef.current, toggles)
+  }, [toggles])
 
   useEffect(() => {
     if (!shouldLoad || !hostRef.current) {
@@ -171,122 +200,72 @@ export default function NobuCharacter({
     }
 
     let cancelled = false
+    let resizeObserver: ResizeObserver | null = null
+    let applyToggleFrame: (() => void) | null = null
     const host = hostRef.current
-    const smallScreen = isSmallScreen()
 
     async function loadCharacter() {
       setLoadStatus('loading')
       setErrorMessage('')
-      removeOml2dElements()
       host.replaceChildren()
 
       try {
-        const { loadOml2d } = await loadOml2dRuntime()
+        await loadCubismCore()
+
+        const PIXI = await import('pixi.js') as unknown as PixiModule
+        window.PIXI = PIXI
+
+        const { Live2DModel, cubism4Ready } =
+          await import('@guansss/pixi-live2d-display/cubism4') as Live2DModule
+
+        Live2DModel.registerTicker?.(PIXI.Ticker)
+        await cubism4Ready?.()
 
         if (cancelled || !hostRef.current) return
 
-        const stageWidth = smallScreen ? 'min(92vw, 390px)' : 'min(54vw, 560px)'
-        const stageHeight = smallScreen ? '72vh' : '82vh'
-        const leftOffset = smallScreen
-          ? 'calc(50% - min(92vw, 390px) / 2)'
-          : 'calc(50% - min(54vw, 560px) / 2)'
-
-        const instance = loadOml2d({
-          mobileDisplay: true,
-          primaryColor: '#0f766e',
-          sayHello: false,
-          transitionTime: 250,
-          initialStatus: 'active',
-          stageStyle: {
-            bottom: smallScreen ? '8vh' : '0',
-            height: stageHeight,
-            left: leftOffset,
-            pointerEvents: 'none',
-            position: 'absolute',
-            right: 'auto',
-            width: stageWidth,
-            zIndex: '2',
-          },
-          statusBar: {
-            disable: true,
-          },
-          menus: {
-            disable: true,
-          },
-          tips: {
-            style: { display: 'none' },
-            mobileStyle: { display: 'none' },
-            idleTips: {
-              message: [],
-              wordTheDay: false,
-            },
-            welcomeTips: {
-              message: {
-                daybreak: '',
-                morning: '',
-                noon: '',
-                afternoon: '',
-                dusk: '',
-                night: '',
-                lateNight: '',
-                weeHours: '',
-              },
-            },
-            copyTips: {
-              message: [],
-            },
-          },
-          models: [
-            {
-              name: CHARACTER_COPY[character],
-              path: MODEL_PATHS[character],
-              scale: smallScreen ? 0.075 : 0.09,
-              mobileScale: 0.075,
-              position: smallScreen ? [0, 70] : [0, 70],
-              mobilePosition: [0, 80],
-              motionPreloadStrategy: 'NONE',
-              stageStyle: {
-                bottom: smallScreen ? '8vh' : '0',
-                height: stageHeight,
-                left: leftOffset,
-                pointerEvents: 'none',
-                position: 'absolute',
-                right: 'auto',
-                width: stageWidth,
-                zIndex: '2',
-              },
-              mobileStageStyle: {
-                bottom: '8vh',
-                height: stageHeight,
-                left: leftOffset,
-                pointerEvents: 'none',
-                position: 'absolute',
-                right: 'auto',
-                width: stageWidth,
-                zIndex: '2',
-              },
-            },
-          ],
-        }) as Oml2dInstance
-
-        moveOml2dStage(hostRef.current)
-        instanceRef.current = instance
-        instance.onLoad((status) => {
-          if (cancelled) return
-          if (hostRef.current) {
-            moveOml2dStage(hostRef.current)
-          }
-          setLoadStatus(status)
-          if (status === 'fail') {
-            setErrorMessage(`${CHARACTER_COPY[character]} could not load.`)
-          }
-          if (status === 'success') {
-            instance.clearTips()
-            instance.stopTipsIdle()
-            instance.statusBarClearEvents()
-            applyRoomPose(instance, roomActionRef.current)
-          }
+        const app = new PIXI.Application({
+          antialias: true,
+          autoDensity: true,
+          backgroundAlpha: 0,
+          height: Math.max(1, host.clientHeight),
+          resolution: Math.min(window.devicePixelRatio || 1, 2),
+          transparent: true,
+          width: Math.max(1, host.clientWidth),
         })
+
+        appRef.current = app
+        host.replaceChildren(app.view)
+
+        const model = await Live2DModel.from(live2dModels[character].path, {
+          autoInteract: false,
+          motionPreload: 'NONE',
+        })
+
+        if (cancelled) {
+          model.destroy?.()
+          app.destroy(true, { baseTexture: true, children: true, texture: true })
+          return
+        }
+
+        modelRef.current = model
+        app.stage.addChild(model)
+        resizeApp(app, host)
+        placeModel(model, app)
+        applyToggles(model, togglesRef.current)
+
+        applyToggleFrame = () => {
+          applyToggles(modelRef.current, togglesRef.current)
+        }
+        app.ticker.add(applyToggleFrame)
+
+        resizeObserver = new ResizeObserver(() => {
+          if (!appRef.current || !modelRef.current) return
+          resizeApp(appRef.current, host)
+          placeModel(modelRef.current, appRef.current)
+        })
+        resizeObserver.observe(host)
+
+        setLoadStatus('success')
       } catch (error) {
         if (cancelled) return
         console.error('Unable to load Nobu Live2D character:', error)
@@ -303,19 +282,47 @@ export default function NobuCharacter({
 
     return () => {
       cancelled = true
-      instanceRef.current?.clearTips()
-      instanceRef.current?.stopTipsIdle()
-      instanceRef.current?.statusBarClearEvents()
-      instanceRef.current = null
-      removeOml2dElements()
+      resizeObserver?.disconnect()
+      if (applyToggleFrame && appRef.current) {
+        appRef.current.ticker.remove(applyToggleFrame)
+      }
+      modelRef.current?.destroy?.()
+      appRef.current?.destroy(true, { baseTexture: true, children: true, texture: true })
+      modelRef.current = null
+      appRef.current = null
       host.replaceChildren()
     }
   }, [character, shouldLoad])
 
   useEffect(() => {
-    if (loadStatus !== 'success' || !instanceRef.current) return
-    applyRoomPose(instanceRef.current, roomAction)
-  }, [loadStatus, roomAction])
+    if (loadStatus !== 'success' || !modelRef.current) return
+
+    if (expressionIndex === null) {
+      if (isSpeaking) {
+        void modelRef.current.expression()
+      }
+      return
+    }
+
+    void modelRef.current.expression(expressionIndex)
+  }, [expressionIndex, isSpeaking, loadStatus])
+
+  useEffect(() => {
+    if (loadStatus !== 'success' || !modelRef.current || !motionRequest) return
+
+    void import('@guansss/pixi-live2d-display/cubism4')
+      .then((module) => {
+        const live2d = module as unknown as Live2DModule
+        return modelRef.current?.motion(
+          motionRequest.group,
+          motionRequest.index,
+          live2d.MotionPriority?.FORCE ?? live2d.MotionPriority?.NORMAL ?? 3
+        )
+      })
+      .catch((error) => {
+        console.warn('Unable to play Nobu Live2D motion:', error)
+      })
+  }, [loadStatus, motionRequest])
 
   return (
     <div
@@ -330,7 +337,7 @@ export default function NobuCharacter({
       <style>{`
         .nobu-live2d {
           bottom: 0;
-          height: 90vh;
+          height: 100dvh;
           left: 0;
           pointer-events: none;
           position: absolute;
@@ -339,15 +346,21 @@ export default function NobuCharacter({
         }
 
         .nobu-live2d-host {
-          bottom: 0;
           height: 100%;
           left: 0;
           position: absolute;
+          top: 0;
           width: 100%;
         }
 
+        .nobu-live2d-host canvas {
+          display: block;
+          height: 100% !important;
+          width: 100% !important;
+        }
+
         .nobu-live2d.is-listening {
-          filter: drop-shadow(0 0 18px rgba(124, 58, 237, 0.3));
+          filter: drop-shadow(0 0 18px rgba(232, 93, 155, 0.28));
         }
 
         .nobu-live2d.is-speaking {
@@ -356,9 +369,9 @@ export default function NobuCharacter({
 
         .nobu-live2d-message {
           bottom: 17vh;
-          color: rgba(255,255,255,0.64);
+          color: rgba(43,66,84,0.64);
           font-size: 12px;
-          font-weight: 600;
+          font-weight: 700;
           left: 50%;
           letter-spacing: 0;
           position: absolute;
@@ -368,18 +381,8 @@ export default function NobuCharacter({
         }
 
         .nobu-live2d-message.error {
-          color: #ffd580;
+          color: #e85d9b;
           width: min(420px, calc(100vw - 32px));
-        }
-
-        @media (max-width: 760px) {
-          .nobu-live2d {
-            height: 84vh;
-          }
-
-          .nobu-live2d-message {
-            bottom: 18vh;
-          }
         }
       `}</style>
 
