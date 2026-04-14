@@ -65,6 +65,8 @@ const capacitorConfig = readFileSync(join(root, 'capacitor.config.ts'), 'utf8')
 const iosInfo = readFileSync(join(root, 'ios/App/App/Info.plist'), 'utf8')
 const androidManifest = readFileSync(join(root, 'android/app/src/main/AndroidManifest.xml'), 'utf8')
 const live2dModels = readFileSync(join(root, 'app/lib/live2d-models.ts'), 'utf8')
+const envLocalPath = join(root, '.env.local')
+const envLocal = existsSync(envLocalPath) ? readFileSync(envLocalPath, 'utf8') : ''
 
 const configUsesOptionalServer = capacitorConfig.includes('CAPACITOR_SERVER_URL')
 mark(configUsesOptionalServer, 'Capacitor uses bundled app by default')
@@ -87,6 +89,20 @@ const usesAsukaOriginal = live2dModels.includes("path: '/models/ASUKA/Asuka.mode
 mark(usesAlexiaOriginal, 'App points Alexia to creator original')
 mark(usesAsukaOriginal, 'App points Asuka to creator original')
 failed ||= !usesAlexiaOriginal || !usesAsukaOriginal
+
+const hasPublicApiKey = /^\s*NEXT_PUBLIC_.*(?:API_KEY|SECRET|TOKEN)\s*=/m.test(envLocal)
+if (hasPublicApiKey) {
+  todo(
+    'Move public secret-looking env vars',
+    'NEXT_PUBLIC_* API keys, secrets, or tokens are visible to the app bundle'
+  )
+} else {
+  mark(true, 'No public API key-style secrets detected in .env.local')
+}
+
+const hasEnvExample = existsSync(join(root, '.env.example'))
+mark(hasEnvExample, 'Environment template exists', '.env.example')
+failed ||= !hasEnvExample
 
 if (failed) {
   console.error('\nMobile preflight failed. Fix the FAIL items before opening Xcode or Android Studio.')

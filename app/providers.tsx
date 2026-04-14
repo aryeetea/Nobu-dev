@@ -3,12 +3,12 @@
 import { SessionProvider } from 'next-auth/react'
 import { ConversationProvider } from '@elevenlabs/react'
 
-const AGENT_ID = 'agent_0301knzm0v3efm3th0qnb84gkqrg'
+import { NOBU_ELEVENLABS_AGENT_ID } from './lib/nobu-env'
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <ConversationProvider agentId={AGENT_ID}>
+      <ConversationProvider agentId={NOBU_ELEVENLABS_AGENT_ID}>
         {children}
       </ConversationProvider>
     </SessionProvider>

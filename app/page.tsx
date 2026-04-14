@@ -16,14 +16,13 @@ import NobuCharacter, { type NobuRoomAction } from './components/NobuCharacter'
 import NobuModelControls from './components/NobuModelControls'
 import NobuRoom from './components/NobuRoom'
 import type { Live2DMotionOption } from './lib/live2d-models'
+import { NOBU_ELEVENLABS_AGENT_ID } from './lib/nobu-env'
 import {
   getNobuVisualState,
   inferNobuEmotionFromText,
   normalizeNobuEmotion,
   type NobuEmotion,
 } from './lib/nobu-emotions'
-
-const AGENT_ID = 'agent_0301knzm0v3efm3th0qnb84gkqrg'
 
 const NOBU_PERSONA = `
 You are Nobu, a personal voice AI assistant that adapts to the person speaking.
@@ -219,7 +218,7 @@ export default function Home() {
     stopWakeListening()
     try {
       await startSession({
-        agentId: AGENT_ID,
+        agentId: NOBU_ELEVENLABS_AGENT_ID,
         connectionType: 'webrtc',
         clientTools: {
           set_visual_emotion: ({ emotion }: { emotion?: unknown }) => {

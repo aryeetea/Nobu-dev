@@ -53,6 +53,27 @@ Camera vision belongs in the native app flow, not as a website-only shortcut.
 
 Do not put private AI provider keys in `NEXT_PUBLIC_` environment variables. Camera analysis should go through a server-side route or native secure backend.
 
+Current repo-side status:
+
+- Native camera permissions are present for iOS and Android.
+- `/api/vision` accepts a camera image payload and validates it.
+- AI vision analysis is intentionally not connected until a server-side provider key is added safely.
+
+Expected request shape for `/api/vision`:
+
+- method: `POST`
+- content type: `multipart/form-data`
+- fields: `image`, `kind`, optional `prompt`
+- allowed `kind` values: `outfit`, `room`, `note`, `object`
+
+## Environment Rules
+
+Use `.env.example` as the template. Keep public and private values separate:
+
+- `NEXT_PUBLIC_ELEVENLABS_AGENT_ID` is okay because the app needs the agent ID.
+- `ELEVENLABS_API_KEY` must stay server-side.
+- Do not use `NEXT_PUBLIC_` for API keys, tokens, database URLs, auth secrets, or provider secrets.
+
 ## Temporary Remote Testing
 
 Only use this while debugging:
