@@ -75,61 +75,21 @@ type Live2DModelInstance = {
   scale: {
     set: (x: number, y?: number) => void
   }
+  update?: (deltaMS: number) => void
   width: number
   x: number
   y: number
 }
 
 type Live2DModule = {
-  CubismRenderer_WebGL?: {
-    prototype?: CubismRendererPrototype
-  }
   Live2DModel: {
     from: (path: string, options?: Record<string, unknown>) => Promise<Live2DModelInstance>
-    registerTicker?: (ticker: unknown) => void
   }
   MotionPriority?: {
     FORCE?: number
     NORMAL?: number
   }
   cubism4Ready?: () => Promise<void>
-}
-
-type CubismModelLike = {
-  getDrawableBlendMode?: (index: number) => unknown
-  getDrawableCount?: () => number
-  getDrawableCulling?: (index: number) => boolean
-  getDrawableDynamicFlagIsVisible?: (index: number) => boolean
-  getDrawableInvertedMaskBit?: (index: number) => boolean
-  getDrawableOpacity?: (index: number) => number
-  getDrawableRenderOrders?: () => ArrayLike<number> | undefined
-  getDrawableTextureIndices?: (index: number) => number
-  getDrawableTextureIndex?: (index: number) => number
-  getDrawableVertexCount?: (index: number) => number
-  getDrawableVertexIndexCount?: (index: number) => number
-  getDrawableVertexIndices?: (index: number) => unknown
-  getDrawableVertexUvs?: (index: number) => unknown
-  getDrawableVertices?: (index: number) => unknown
-  getMultiplyColor?: (index: number) => unknown
-  getScreenColor?: (index: number) => unknown
-}
-
-type CubismRendererInstance = {
-  _clippingManager?: {
-    getClippingContextListForDraw?: () => unknown[]
-    setupClippingContext?: (model: CubismModelLike, renderer: CubismRendererInstance) => void
-  } | null
-  _sortedDrawableIndexList?: Array<number | undefined>
-  _textures?: Record<number, unknown>
-  drawMesh: (...args: unknown[]) => void
-  getModel: () => CubismModelLike
-  preDraw: () => void
-  setClippingContextBufferForDraw: (clip: unknown) => void
-  setIsCulling: (isCulling: boolean) => void
-}
-
-type CubismRendererPrototype = {
-  doDrawModel?: (this: CubismRendererInstance) => void
 }
 
 declare global {
@@ -143,7 +103,6 @@ const CUBISM_CORE_SCRIPT_ID = 'nobu-cubism4-core'
 const CUBISM_CORE_SCRIPT_SRC = '/live2d/live2dcubismcore.min.js'
 const ACTIVE_FPS = 30
 const IDLE_FPS = 20
-const patchedRendererPrototypes = new WeakSet<CubismRendererPrototype>()
 
 const CHARACTER_COPY: Record<Character, string> = {
   female: 'Alexia',
@@ -210,85 +169,6 @@ function waitForNextFrame() {
   return new Promise<void>((resolve) => {
     requestAnimationFrame(() => resolve())
   })
-}
-
-function patchCubismRenderer(live2d: Live2DModule) {
-  const prototype = live2d.CubismRenderer_WebGL?.prototype
-  if (!prototype || patchedRendererPrototypes.has(prototype)) return
-
-  prototype.doDrawModel = function doDrawModel() {
-    this.preDraw()
-
-    const model = this.getModel()
-    const drawableCount = model.getDrawableCount?.() ?? 0
-    const renderOrder = model.getDrawableRenderOrders?.()
-
-    if (!drawableCount || !renderOrder) return
-
-    if (this._clippingManager) {
-      this._clippingManager.setupClippingContext?.(model, this)
-    }
-
-    const sortedDrawableIndexList =
-      this._sortedDrawableIndexList ?? Array.from<number | undefined>({ length: drawableCount })
-
-    sortedDrawableIndexList.length = drawableCount
-    sortedDrawableIndexList.fill(undefined)
-    this._sortedDrawableIndexList = sortedDrawableIndexList
-
-    for (let i = 0; i < drawableCount; ++i) {
-      const order = renderOrder[i]
-      if (!Number.isInteger(order) || order < 0 || order >= drawableCount) continue
-      sortedDrawableIndexList[order] = i
-    }
-
-    const clippingContexts =
-      this._clippingManager?.getClippingContextListForDraw?.() ?? []
-
-    for (let i = 0; i < drawableCount; ++i) {
-      const drawableIndex = sortedDrawableIndexList[i]
-      if (
-        typeof drawableIndex !== 'number' ||
-        !Number.isInteger(drawableIndex) ||
-        drawableIndex < 0 ||
-        drawableIndex >= drawableCount
-      ) {
-        continue
-      }
-
-      if (!model.getDrawableDynamicFlagIsVisible?.(drawableIndex)) continue
-
-      const textureIndex =
-        model.getDrawableTextureIndex?.(drawableIndex) ??
-        model.getDrawableTextureIndices?.(drawableIndex)
-      if (
-        typeof textureIndex !== 'number' ||
-        !Number.isInteger(textureIndex) ||
-        textureIndex < 0 ||
-        (this._textures && this._textures[textureIndex] == null)
-      ) {
-        continue
-      }
-
-      this.setClippingContextBufferForDraw(clippingContexts[drawableIndex] ?? null)
-      this.setIsCulling(Boolean(model.getDrawableCulling?.(drawableIndex)))
-      this.drawMesh(
-        textureIndex,
-        model.getDrawableVertexIndexCount?.(drawableIndex),
-        model.getDrawableVertexCount?.(drawableIndex),
-        model.getDrawableVertexIndices?.(drawableIndex),
-        model.getDrawableVertices?.(drawableIndex),
-        model.getDrawableVertexUvs?.(drawableIndex),
-        model.getMultiplyColor?.(drawableIndex),
-        model.getScreenColor?.(drawableIndex),
-        model.getDrawableOpacity?.(drawableIndex),
-        model.getDrawableBlendMode?.(drawableIndex),
-        model.getDrawableInvertedMaskBit?.(drawableIndex),
-      )
-    }
-  }
-
-  patchedRendererPrototypes.add(prototype)
 }
 
 function getRoomPlacement(action: NobuRoomAction, smallScreen: boolean) {
@@ -430,8 +310,6 @@ export default function NobuCharacter({
           await import('pixi-live2d-display-lipsyncpatch/cubism4') as Live2DModule
         const { Live2DModel, cubism4Ready } = live2d
 
-        patchCubismRenderer(live2d)
-        Live2DModel.registerTicker?.(PIXI.Ticker)
         await cubism4Ready?.()
 
         if (cancelled || !hostRef.current) return
@@ -453,7 +331,9 @@ export default function NobuCharacter({
         const model = await Live2DModel.from(live2dModels[character].path, {
           autoFocus: false,
           autoHitTest: false,
+          autoUpdate: true,
           motionPreload: 'NONE',
+          ticker: app.ticker,
         })
 
         if (cancelled) {
@@ -463,6 +343,7 @@ export default function NobuCharacter({
 
         modelRef.current = model
         app.stage.addChild(model)
+        model.update?.(0)
         resizeApp(app, host)
         await waitForNextFrame()
         if (cancelled) return
