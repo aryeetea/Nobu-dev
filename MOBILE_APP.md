@@ -82,11 +82,19 @@ Only use this while debugging:
 CAPACITOR_SERVER_URL=https://heynobu.netlify.app npm run mobile:sync
 ```
 
+Or use the helper:
+
+```bash
+npm run mobile:sync:remote
+```
+
 For the real app build, leave `CAPACITOR_SERVER_URL` unset:
 
 ```bash
 npm run mobile:sync
 ```
+
+The current bundled `capacitor-web` folder is only a launch placeholder. Until Nobu has fully native screens or an exported mobile shell, use `mobile:sync:remote` for Xcode testing.
 
 ## Prepare Live2D SDK Locally
 

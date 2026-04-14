@@ -13,6 +13,7 @@
     "mobile:prepare-live2d": "node scripts/prepare-live2d-sdk.mjs",
     "mobile:preflight": "node scripts/mobile-preflight.mjs",
     "mobile:sync": "cap sync",
+    "mobile:sync:remote": "CAPACITOR_SERVER_URL=https://heynobu.netlify.app cap sync",
     "mobile:ios": "cap open ios",
     "mobile:android": "cap open android"
   },
