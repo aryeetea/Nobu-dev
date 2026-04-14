@@ -1,7 +1,17 @@
 'use client'
 
+import Image from 'next/image'
+import { useState } from 'react'
+
 type Props = {
   character: 'female' | 'male'
+}
+
+type RoomArea = 'bed' | 'desk' | 'chair' | 'window' | 'lights'
+
+const roomImages = {
+  female: '/rooms/nobu-room-Alexia.png',
+  male: '/rooms/nobu-room-Asuka.png',
 }
 
 const roomThemes = {
@@ -43,9 +53,22 @@ const roomThemes = {
 
 export default function NobuRoom({ character }: Props) {
   const theme = roomThemes[character]
+  const roomImage = roomImages[character]
+  const [activeArea, setActiveArea] = useState<RoomArea | null>(null)
+
+  function activateArea(area: RoomArea) {
+    setActiveArea((current) => current === area ? null : area)
+  }
 
   return (
-    <section aria-label="Anime studio apartment" className="nobu-room">
+    <section
+      aria-label="Anime studio apartment"
+      className={[
+        'nobu-room',
+        'photo-room',
+        activeArea ? `room-active-${activeArea}` : '',
+      ].join(' ')}
+    >
       <style>{`
         .nobu-room {
           background: ${theme.wall};
@@ -60,6 +83,106 @@ export default function NobuRoom({ character }: Props) {
           height: 100%;
           width: 100%;
         }
+
+        .photo-room-art {
+          display: none;
+        }
+
+        .nobu-room.photo-room {
+          background: #f2dfd8;
+        }
+
+        .nobu-room.photo-room .room-desktop,
+        .nobu-room.photo-room .room-mobile {
+          display: none;
+        }
+
+        .nobu-room.photo-room .photo-room-art {
+          display: block;
+          height: 100%;
+          inset: 0;
+          object-fit: cover;
+          object-position: center center;
+          position: absolute;
+          width: 100%;
+        }
+
+        .room-atmosphere {
+          background:
+            radial-gradient(circle at 48% 38%, rgba(255,255,255,0.16), transparent 30%),
+            linear-gradient(180deg, rgba(255,246,231,0.08), rgba(71,42,47,0.08));
+          inset: 0;
+          opacity: 0.72;
+          pointer-events: none;
+          position: absolute;
+          transition: opacity 0.28s ease, background 0.28s ease;
+          z-index: 1;
+        }
+
+        .room-active-window .room-atmosphere {
+          background:
+            radial-gradient(circle at 58% 18%, rgba(255,255,255,0.34), transparent 28%),
+            linear-gradient(180deg, rgba(170,219,255,0.16), rgba(255,246,231,0.04));
+          opacity: 0.9;
+        }
+
+        .room-active-lights .room-atmosphere {
+          background:
+            radial-gradient(circle at 14% 8%, rgba(255,215,130,0.36), transparent 28%),
+            radial-gradient(circle at 52% 8%, rgba(255,215,130,0.24), transparent 24%),
+            linear-gradient(180deg, rgba(255,231,190,0.2), rgba(93,55,52,0.08));
+          opacity: 1;
+        }
+
+        .room-active-bed .room-atmosphere {
+          background:
+            radial-gradient(ellipse at 22% 66%, rgba(255,215,226,0.36), transparent 28%),
+            linear-gradient(180deg, rgba(255,246,231,0.08), rgba(71,42,47,0.08));
+          opacity: 0.95;
+        }
+
+        .room-active-desk .room-atmosphere {
+          background:
+            radial-gradient(ellipse at 56% 56%, rgba(255,235,180,0.28), transparent 26%),
+            linear-gradient(180deg, rgba(255,246,231,0.08), rgba(71,42,47,0.08));
+          opacity: 0.95;
+        }
+
+        .room-active-chair .room-atmosphere {
+          background:
+            radial-gradient(ellipse at 42% 64%, rgba(255,219,230,0.3), transparent 22%),
+            linear-gradient(180deg, rgba(255,246,231,0.08), rgba(71,42,47,0.08));
+          opacity: 0.94;
+        }
+
+        .room-hotspots {
+          inset: 0;
+          position: absolute;
+          z-index: 3;
+        }
+
+        .room-hotspot {
+          appearance: none;
+          background: transparent;
+          border: 0;
+          border-radius: 8px;
+          cursor: pointer;
+          opacity: 0;
+          position: absolute;
+          touch-action: manipulation;
+        }
+
+        .room-hotspot:focus-visible {
+          box-shadow: 0 0 0 3px rgba(255, 215, 130, 0.76);
+          opacity: 1;
+          outline: none;
+        }
+
+        .hotspot-bed { bottom: 14%; height: 28%; left: 4%; width: 35%; }
+        .hotspot-desk { bottom: 22%; height: 30%; left: 43%; width: 28%; }
+        .hotspot-chair { bottom: 16%; height: 30%; left: 34%; width: 14%; }
+        .hotspot-window { height: 44%; left: 40%; top: 8%; width: 36%; }
+        .hotspot-lights { height: 14%; left: 0; top: 0; width: 54%; }
 
         .room-mobile {
           display: none;
@@ -147,8 +270,62 @@ export default function NobuRoom({ character }: Props) {
           .room-mobile {
             display: block;
           }
+
+          .nobu-room.photo-room .photo-room-art {
+            object-position: center center;
+          }
+
+          .hotspot-bed { bottom: 15%; height: 26%; left: 0; width: 48%; }
+          .hotspot-desk { bottom: 32%; height: 24%; left: 38%; width: 38%; }
+          .hotspot-chair { bottom: 24%; height: 26%; left: 30%; width: 22%; }
+          .hotspot-window { height: 34%; left: 36%; top: 10%; width: 46%; }
+          .hotspot-lights { height: 12%; left: 0; top: 0; width: 72%; }
         }
       `}</style>
+
+      <Image
+        alt=""
+        aria-hidden="true"
+        className="photo-room-art"
+        draggable={false}
+        fill
+        priority
+        sizes="100vw"
+        src={roomImage}
+      />
+      <div aria-hidden="true" className="room-atmosphere" />
+      <div className="room-hotspots">
+        <button
+          aria-label="Focus the bed area"
+          className="room-hotspot hotspot-bed"
+          onClick={() => activateArea('bed')}
+          type="button"
+        />
+        <button
+          aria-label="Focus the desk area"
+          className="room-hotspot hotspot-desk"
+          onClick={() => activateArea('desk')}
+          type="button"
+        />
+        <button
+          aria-label="Focus the chair area"
+          className="room-hotspot hotspot-chair"
+          onClick={() => activateArea('chair')}
+          type="button"
+        />
+        <button
+          aria-label="Focus the window area"
+          className="room-hotspot hotspot-window"
+          onClick={() => activateArea('window')}
+          type="button"
+        />
+        <button
+          aria-label="Toggle room lights"
+          className="room-hotspot hotspot-lights"
+          onClick={() => activateArea('lights')}
+          type="button"
+        />
+      </div>
 
       <svg
         aria-hidden="true"
