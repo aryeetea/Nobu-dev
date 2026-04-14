@@ -34,6 +34,21 @@ const checks = [
     path: 'vendor/live2d/android',
     required: false,
   },
+  {
+    label: 'iOS Live2D Core bridge header',
+    path: 'ios/App/App/NobuLive2D/NobuLive2DBridge.h',
+    required: true,
+  },
+  {
+    label: 'iOS Live2D Core bridge implementation',
+    path: 'ios/App/App/NobuLive2D/NobuLive2DBridge.mm',
+    required: true,
+  },
+  {
+    label: 'iOS Swift bridge header',
+    path: 'ios/App/App/App-Bridging-Header.h',
+    required: true,
+  },
 ]
 
 let failed = false
@@ -65,6 +80,7 @@ const capacitorConfig = readFileSync(join(root, 'capacitor.config.ts'), 'utf8')
 const iosInfo = readFileSync(join(root, 'ios/App/App/Info.plist'), 'utf8')
 const androidManifest = readFileSync(join(root, 'android/app/src/main/AndroidManifest.xml'), 'utf8')
 const live2dModels = readFileSync(join(root, 'app/lib/live2d-models.ts'), 'utf8')
+const xcodeProject = readFileSync(join(root, 'ios/App/App.xcodeproj/project.pbxproj'), 'utf8')
 const envLocalPath = join(root, '.env.local')
 const envLocal = existsSync(envLocalPath) ? readFileSync(envLocalPath, 'utf8') : ''
 
@@ -89,6 +105,16 @@ const usesAsukaOriginal = live2dModels.includes("path: '/models/ASUKA/Asuka.mode
 mark(usesAlexiaOriginal, 'App points Alexia to creator original')
 mark(usesAsukaOriginal, 'App points Asuka to creator original')
 failed ||= !usesAlexiaOriginal || !usesAsukaOriginal
+
+const iosBundlesModels = xcodeProject.includes('models in Resources') &&
+  xcodeProject.includes('../../../public/models')
+const iosLinksLive2DCore = xcodeProject.includes('-lLive2DCubismCore') &&
+  xcodeProject.includes('vendor/live2d/ios/Core/include')
+const iosUsesBridgeHeader = xcodeProject.includes('SWIFT_OBJC_BRIDGING_HEADER = "App/App-Bridging-Header.h"')
+mark(iosBundlesModels, 'iOS bundles original Live2D model folder')
+mark(iosLinksLive2DCore, 'iOS links official Live2D Cubism Core')
+mark(iosUsesBridgeHeader, 'iOS exposes Live2D bridge to Swift')
+failed ||= !iosBundlesModels || !iosLinksLive2DCore || !iosUsesBridgeHeader
 
 const hasPublicApiKey = /^\s*NEXT_PUBLIC_.*(?:API_KEY|SECRET|TOKEN)\s*=/m.test(envLocal)
 if (hasPublicApiKey) {

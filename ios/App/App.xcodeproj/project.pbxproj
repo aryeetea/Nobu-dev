@@ -12,6 +12,8 @@
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
 		A1B2C3D4E5F6000000000001 /* NobuRootViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000000000002 /* NobuRootViewController.swift */; };
+		A1B2C3D4E5F6000000000003 /* NobuLive2DBridge.mm in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000000000004 /* NobuLive2DBridge.mm */; };
+		A1B2C3D4E5F6000000000005 /* models in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000000000006 /* models */; };
 		504EC30D1FED79650016851F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30B1FED79650016851F /* Main.storyboard */; };
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
@@ -24,6 +26,10 @@
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6000000000002 /* NobuRootViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NobuRootViewController.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6000000000004 /* NobuLive2DBridge.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = NobuLive2DBridge.mm; sourceTree = "<group>"; };
+		A1B2C3D4E5F6000000000007 /* NobuLive2DBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NobuLive2DBridge.h; sourceTree = "<group>"; };
+		A1B2C3D4E5F6000000000008 /* App-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "App-Bridging-Header.h"; sourceTree = "<group>"; };
+		A1B2C3D4E5F6000000000006 /* models */ = {isa = PBXFileReference; lastKnownFileType = folder; name = models; path = ../../../public/models; sourceTree = "<group>"; };
 		504EC30C1FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		504EC30E1FED79650016851F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		504EC3111FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
@@ -66,15 +72,27 @@
 			children = (
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
+				A1B2C3D4E5F6000000000008 /* App-Bridging-Header.h */,
 				A1B2C3D4E5F6000000000002 /* NobuRootViewController.swift */,
+				A1B2C3D4E5F6000000000009 /* NobuLive2D */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
 				504EC3131FED79650016851F /* Info.plist */,
+				A1B2C3D4E5F6000000000006 /* models */,
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		A1B2C3D4E5F6000000000009 /* NobuLive2D */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D4E5F6000000000007 /* NobuLive2DBridge.h */,
+				A1B2C3D4E5F6000000000004 /* NobuLive2DBridge.mm */,
+			);
+			path = NobuLive2D;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -143,6 +161,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */,
+				A1B2C3D4E5F6000000000005 /* models in Resources */,
 				50B271D11FEDC1A000F3C39B /* public in Resources */,
 				504EC30F1FED79650016851F /* Assets.xcassets in Resources */,
 				50379B232058CBB4000EE86E /* capacitor.config.json in Resources */,
@@ -159,6 +178,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
+				A1B2C3D4E5F6000000000003 /* NobuLive2DBridge.mm in Sources */,
 				A1B2C3D4E5F6000000000001 /* NobuRootViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -302,17 +322,28 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = T48G3Z7MV9;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/../../vendor/live2d/ios/Core/include",
+				);
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				"LIBRARY_SEARCH_PATHS[sdk=iphoneos*]" = "$(SRCROOT)/../../vendor/live2d/ios/Core/lib/Debug-iphoneos";
+				"LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*]" = "$(SRCROOT)/../../vendor/live2d/ios/Core/lib/Debug-iphonesimulator-arm64";
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-lLive2DCubismCore",
+				);
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = com.nobu.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OBJC_BRIDGING_HEADER = "App/App-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -325,16 +356,27 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = T48G3Z7MV9;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/../../vendor/live2d/ios/Core/include",
+				);
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				"LIBRARY_SEARCH_PATHS[sdk=iphoneos*]" = "$(SRCROOT)/../../vendor/live2d/ios/Core/lib/Release-iphoneos";
+				"LIBRARY_SEARCH_PATHS[sdk=iphonesimulator*]" = "$(SRCROOT)/../../vendor/live2d/ios/Core/lib/Release-iphonesimulator-arm64";
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-lLive2DCubismCore",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.nobu.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
+				SWIFT_OBJC_BRIDGING_HEADER = "App/App-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

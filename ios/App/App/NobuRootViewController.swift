@@ -17,6 +17,7 @@ final class NobuRootViewController: UIViewController {
         super.viewDidLoad()
         configureView()
         configureCharacterStage()
+        prepareLive2D()
         requestMicrophoneReadiness()
         requestCameraReadiness()
     }
@@ -48,6 +49,17 @@ final class NobuRootViewController: UIViewController {
             characterStage.widthAnchor.constraint(equalTo: view.widthAnchor),
             characterStage.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.72)
         ])
+    }
+
+    private func prepareLive2D() {
+        let coreVersion = NobuLive2DBridge.coreVersionString()
+        let alexiaPath = NobuLive2DBridge.bundledModelPath(forCharacter: "Alexia") ?? "missing"
+        var errorMessage: NSString?
+        let alexiaReadable = NobuLive2DBridge.bundledMocIsReadable(forCharacter: "Alexia", errorMessage: &errorMessage)
+
+        print("Nobu Live2D Cubism Core \(coreVersion)")
+        print("Nobu Alexia model path: \(alexiaPath)")
+        print("Nobu Alexia moc readable: \(alexiaReadable) \(errorMessage ?? "")")
     }
 
     private func requestMicrophoneReadiness() {
