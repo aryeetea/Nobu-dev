@@ -111,6 +111,7 @@ export default function NobuRoom({ character, onRoomAction }: Props) {
           object-position: center center;
           position: absolute;
           width: 100%;
+          z-index: 0;
         }
 
         .room-atmosphere {
@@ -164,7 +165,7 @@ export default function NobuRoom({ character, onRoomAction }: Props) {
         .room-hotspots {
           inset: 0;
           position: absolute;
-          z-index: 3;
+          z-index: 30;
         }
 
         .room-hotspot {

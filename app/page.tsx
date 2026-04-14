@@ -421,8 +421,8 @@ export default function Home() {
         .intro-rest.teal { color: #0f766e; }
         .intro-rest.green { color: #059669; }
         .intro-rest.pink { color: #db2777; }
-        .nobu-stage { width: 100%; min-height: 100dvh; background: #eaf6ff; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
-        .character-stage { width: 100vw; height: 100dvh; display: flex; align-items: center; justify-content: center; pointer-events: none; position: relative; z-index: 2; }
+        .nobu-stage { width: 100%; min-height: 100dvh; background: #eaf6ff; display: flex; flex-direction: column; align-items: center; justify-content: center; isolation: isolate; position: relative; overflow: hidden; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+        .character-stage { inset: 0; pointer-events: none; position: absolute; z-index: 20; }
         .status { bottom: calc(18px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 7px; left: 50%; position: fixed; transform: translateX(-50%); z-index: 5; }
         .s-dot { width: 7px; height: 7px; border-radius: 50%; background: #34d399; animation: blink 2s infinite; }
         .s-text { font-size: 13px; font-weight: 800; color: rgba(43,66,84,0.72); text-transform: lowercase; }
@@ -477,11 +477,7 @@ export default function Home() {
             isSpeaking={isSpeaking}
             motionRequest={motionRequest}
             roomAction={roomAction}
-            shouldLoad={
-              !introVisible ||
-              status === 'connecting' ||
-              status === 'connected'
-            }
+            shouldLoad
             toggles={activeModelToggles}
           />
         </div>
