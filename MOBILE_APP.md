@@ -72,6 +72,7 @@ npm run mobile:sync
 Open Xcode:
 
 ```bash
+npm run mobile:preflight
 npm run mobile:ios
 ```
 
@@ -80,8 +81,19 @@ npm run mobile:ios
 Open Android Studio:
 
 ```bash
+npm run mobile:preflight
 npm run mobile:android
 ```
+
+## Mobile Preflight
+
+Before opening Xcode or Android Studio, run:
+
+```bash
+npm run mobile:preflight
+```
+
+This checks that the original Live2D model files exist, camera and microphone permissions are present, Capacitor is not locked to Netlify, and the official SDK folders are ready or clearly marked as missing.
 
 ## Voice And Camera Permissions
 
