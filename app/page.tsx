@@ -129,7 +129,6 @@ export default function Home() {
   const lastExplicitVisualEmotionAtRef = useRef(0)
   const [settings, setSettings] = useState<NobuSettings>(DEFAULT_NOBU_SETTINGS)
   const [character, setCharacter] = useState<'female' | 'male'>('female')
-  const [manualExpressionIndex, setManualExpressionIndex] = useState<number | null>(null)
   const [autoExpressionIndex, setAutoExpressionIndex] = useState<number | null>(null)
   const [motionRequest, setMotionRequest] = useState<
     { group: string; id: number; index: number } | null
@@ -139,7 +138,6 @@ export default function Home() {
   const [introVisible, setIntroVisible] = useState(true)
   const [introExiting, setIntroExiting] = useState(false)
   const [wakeListenStatus, setWakeListenStatus] = useState<WakeListenStatus>('idle')
-  const activeExpressionIndex = manualExpressionIndex ?? autoExpressionIndex
   const activeModelToggles = {
     ...autoModelToggles,
     ...modelToggles,
@@ -250,7 +248,6 @@ export default function Home() {
       const nextSettings = loadNobuSettings()
       setSettings(nextSettings)
       setCharacter(nextSettings.character)
-      setManualExpressionIndex(null)
       setAutoExpressionIndex(null)
       setModelToggles({})
       setAutoModelToggles({})
@@ -473,7 +470,7 @@ export default function Home() {
         <div className="character-stage">
           <NobuCharacter
             character={character}
-            expressionIndex={activeExpressionIndex}
+            expressionIndex={autoExpressionIndex}
             isListening={isListening}
             isSpeaking={isSpeaking}
             motionRequest={motionRequest}
@@ -487,10 +484,8 @@ export default function Home() {
         </div>
         <NobuModelControls
           character={character}
-          onExpressionSelect={setManualExpressionIndex}
           onMotionSelect={selectMotion}
           onToggleChange={changeModelToggle}
-          selectedExpressionIndex={manualExpressionIndex}
           toggles={modelToggles}
         />
         <div className="status">

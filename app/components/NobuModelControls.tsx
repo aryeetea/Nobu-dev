@@ -5,19 +5,15 @@ import { live2dModels, type Live2DCharacterId, type Live2DMotionOption } from '.
 
 type Props = {
   character: Live2DCharacterId
-  onExpressionSelect: (index: number | null) => void
   onMotionSelect: (motion: Live2DMotionOption) => void
   onToggleChange: (parameterId: string, enabled: boolean) => void
-  selectedExpressionIndex: number | null
   toggles: Record<string, boolean>
 }
 
 export default function NobuModelControls({
   character,
-  onExpressionSelect,
   onMotionSelect,
   onToggleChange,
-  selectedExpressionIndex,
   toggles,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false)
@@ -119,6 +115,19 @@ export default function NobuModelControls({
           color: #2b4254;
         }
 
+        .model-control-status {
+          background: rgba(52,211,153,0.14);
+          border: 1px solid rgba(52,211,153,0.24);
+          border-radius: 999px;
+          color: rgba(43,66,84,0.72);
+          display: inline-flex;
+          font-size: 12px;
+          font-weight: 850;
+          letter-spacing: 0;
+          min-height: 34px;
+          padding: 9px 12px;
+        }
+
         @media (min-width: 761px) {
           .model-controls {
             bottom: 18px;
@@ -140,25 +149,9 @@ export default function NobuModelControls({
 
       <div className="model-controls-panel">
         <section className="model-controls-section">
-          <div className="model-controls-title">Expressions</div>
+          <div className="model-controls-title">Expression</div>
           <div className="model-controls-grid">
-            <button
-              className={`model-control-btn ${selectedExpressionIndex === null ? 'active' : ''}`}
-              onClick={() => onExpressionSelect(null)}
-              type="button"
-            >
-              Voice Auto
-            </button>
-            {model.expressions.map((expression) => (
-              <button
-                className={`model-control-btn ${selectedExpressionIndex === expression.index ? 'active' : ''}`}
-                key={expression.id}
-                onClick={() => onExpressionSelect(expression.index)}
-                type="button"
-              >
-                {expression.label}
-              </button>
-            ))}
+            <span className="model-control-status">Voice Auto is always on</span>
           </div>
         </section>
 
