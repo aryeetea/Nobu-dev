@@ -102,11 +102,14 @@ type CubismModelLike = {
   getDrawableOpacity?: (index: number) => number
   getDrawableRenderOrders?: () => ArrayLike<number> | undefined
   getDrawableTextureIndices?: (index: number) => number
+  getDrawableTextureIndex?: (index: number) => number
   getDrawableVertexCount?: (index: number) => number
   getDrawableVertexIndexCount?: (index: number) => number
   getDrawableVertexIndices?: (index: number) => unknown
   getDrawableVertexUvs?: (index: number) => unknown
   getDrawableVertices?: (index: number) => unknown
+  getMultiplyColor?: (index: number) => unknown
+  getScreenColor?: (index: number) => unknown
 }
 
 type CubismRendererInstance = {
@@ -115,6 +118,7 @@ type CubismRendererInstance = {
     setupClippingContext?: (model: CubismModelLike, renderer: CubismRendererInstance) => void
   } | null
   _sortedDrawableIndexList?: Array<number | undefined>
+  _textures?: Record<number, unknown>
   drawMesh: (...args: unknown[]) => void
   getModel: () => CubismModelLike
   preDraw: () => void
@@ -240,11 +244,14 @@ function patchCubismRenderer(live2d: Live2DModule) {
 
       if (!model.getDrawableDynamicFlagIsVisible?.(drawableIndex)) continue
 
-      const textureIndex = model.getDrawableTextureIndices?.(drawableIndex)
+      const textureIndex =
+        model.getDrawableTextureIndex?.(drawableIndex) ??
+        model.getDrawableTextureIndices?.(drawableIndex)
       if (
         typeof textureIndex !== 'number' ||
         !Number.isInteger(textureIndex) ||
-        textureIndex < 0
+        textureIndex < 0 ||
+        (this._textures && this._textures[textureIndex] == null)
       ) {
         continue
       }
@@ -258,6 +265,8 @@ function patchCubismRenderer(live2d: Live2DModule) {
         model.getDrawableVertexIndices?.(drawableIndex),
         model.getDrawableVertices?.(drawableIndex),
         model.getDrawableVertexUvs?.(drawableIndex),
+        model.getMultiplyColor?.(drawableIndex),
+        model.getScreenColor?.(drawableIndex),
         model.getDrawableOpacity?.(drawableIndex),
         model.getDrawableBlendMode?.(drawableIndex),
         model.getDrawableInvertedMaskBit?.(drawableIndex),
@@ -404,7 +413,7 @@ export default function NobuCharacter({
         window.PIXI = PIXI
 
         const live2d =
-          await import('@guansss/pixi-live2d-display/cubism4') as Live2DModule
+          await import('pixi-live2d-display-lipsyncpatch/cubism4') as Live2DModule
         const { Live2DModel, cubism4Ready } = live2d
 
         patchCubismRenderer(live2d)
@@ -419,7 +428,6 @@ export default function NobuCharacter({
           backgroundAlpha: 0,
           height: Math.max(1, host.clientHeight),
           resolution: Math.min(window.devicePixelRatio || 1, 2),
-          transparent: true,
           width: Math.max(1, host.clientWidth),
         })
 
@@ -511,7 +519,7 @@ export default function NobuCharacter({
   useEffect(() => {
     if (loadStatus !== 'success' || !modelRef.current || !motionRequest) return
 
-    void import('@guansss/pixi-live2d-display/cubism4')
+    void import('pixi-live2d-display-lipsyncpatch/cubism4')
       .then((module) => {
         const live2d = module as unknown as Live2DModule
         return modelRef.current?.motion(

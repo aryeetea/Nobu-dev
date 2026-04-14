@@ -27,7 +27,7 @@ export default function NobuModelControls({
           left: 12px;
           position: fixed;
           right: 12px;
-          z-index: 12;
+          z-index: 80;
         }
 
         .model-controls-toggle {
@@ -139,6 +139,7 @@ export default function NobuModelControls({
       `}</style>
 
       <button
+        aria-label={`${isOpen ? 'Close' : 'Open'} ${model.label} controls`}
         aria-expanded={isOpen}
         className="model-controls-toggle"
         onClick={() => setIsOpen((current) => !current)}
@@ -160,6 +161,7 @@ export default function NobuModelControls({
           <div className="model-controls-grid">
             {model.motions.map((motion) => (
               <button
+                aria-label={`Play ${motion.label}`}
                 className="model-control-btn"
                 key={`${motion.group}-${motion.index}`}
                 onClick={() => onMotionSelect(motion)}
@@ -176,6 +178,8 @@ export default function NobuModelControls({
           <div className="model-controls-grid">
             {model.toggles.map((toggle) => (
               <button
+                aria-label={`${toggles[toggle.parameterId] ? 'Turn off' : 'Turn on'} ${toggle.label}`}
+                aria-pressed={Boolean(toggles[toggle.parameterId])}
                 className={`model-control-btn ${toggles[toggle.parameterId] ? 'active' : ''}`}
                 key={toggle.parameterId}
                 onClick={() => onToggleChange(toggle.parameterId, !toggles[toggle.parameterId])}

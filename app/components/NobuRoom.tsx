@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import { useState } from 'react'
 import type { NobuRoomAction } from './NobuCharacter'
 
@@ -164,6 +163,7 @@ export default function NobuRoom({ character, onRoomAction }: Props) {
 
         .room-hotspots {
           inset: 0;
+          pointer-events: none;
           position: absolute;
           z-index: 30;
         }
@@ -175,6 +175,7 @@ export default function NobuRoom({ character, onRoomAction }: Props) {
           border-radius: 8px;
           cursor: pointer;
           opacity: 0;
+          pointer-events: auto;
           position: absolute;
           touch-action: manipulation;
         }
@@ -290,44 +291,49 @@ export default function NobuRoom({ character, onRoomAction }: Props) {
         }
       `}</style>
 
-      <Image
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
         alt=""
         aria-hidden="true"
         className="photo-room-art"
+        decoding="async"
         draggable={false}
-        fill
-        priority
-        sizes="100vw"
+        fetchPriority="high"
         src={roomImage}
       />
       <div aria-hidden="true" className="room-atmosphere" />
       <div className="room-hotspots">
         <button
           aria-label="Focus the bed area"
+          aria-pressed={activeArea === 'bed'}
           className="room-hotspot hotspot-bed"
           onClick={() => activateArea('bed')}
           type="button"
         />
         <button
           aria-label="Focus the desk area"
+          aria-pressed={activeArea === 'desk'}
           className="room-hotspot hotspot-desk"
           onClick={() => activateArea('desk')}
           type="button"
         />
         <button
           aria-label="Focus the chair area"
+          aria-pressed={activeArea === 'chair'}
           className="room-hotspot hotspot-chair"
           onClick={() => activateArea('chair')}
           type="button"
         />
         <button
           aria-label="Focus the window area"
+          aria-pressed={activeArea === 'window'}
           className="room-hotspot hotspot-window"
           onClick={() => activateArea('window')}
           type="button"
         />
         <button
           aria-label="Toggle room lights"
+          aria-pressed={activeArea === 'lights'}
           className="room-hotspot hotspot-lights"
           onClick={() => activateArea('lights')}
           type="button"

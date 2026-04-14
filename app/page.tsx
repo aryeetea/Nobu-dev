@@ -423,11 +423,11 @@ export default function Home() {
         .intro-rest.pink { color: #db2777; }
         .nobu-stage { width: 100%; min-height: 100dvh; background: #eaf6ff; display: flex; flex-direction: column; align-items: center; justify-content: center; isolation: isolate; position: relative; overflow: hidden; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
         .character-stage { inset: 0; pointer-events: none; position: absolute; z-index: 20; }
-        .status { bottom: calc(18px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 7px; left: 50%; position: fixed; transform: translateX(-50%); z-index: 5; }
+        .status { bottom: calc(18px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 7px; left: 50%; position: fixed; transform: translateX(-50%); z-index: 55; }
         .s-dot { width: 7px; height: 7px; border-radius: 50%; background: #34d399; animation: blink 2s infinite; }
         .s-text { font-size: 13px; font-weight: 800; color: rgba(43,66,84,0.72); text-transform: lowercase; }
-        .wake-indicator { position: fixed; top: calc(14px + env(safe-area-inset-top)); left: 14px; z-index: 10; display: flex; align-items: center; gap: 8px; border: 1px solid rgba(43,66,84,0.14); border-radius: 999px; background: rgba(255,255,255,0.66); color: rgba(43,66,84,0.66); padding: 8px 11px; font-size: 11px; font-weight: 800; backdrop-filter: blur(12px); }
-        .settings-link { position: fixed; top: calc(14px + env(safe-area-inset-top)); right: 14px; z-index: 10; display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; border: 1px solid rgba(43,66,84,0.14); border-radius: 999px; background: rgba(255,255,255,0.66); color: rgba(43,66,84,0.72); text-decoration: none; backdrop-filter: blur(12px); }
+        .wake-indicator { position: fixed; top: calc(14px + env(safe-area-inset-top)); left: 14px; z-index: 70; display: flex; align-items: center; gap: 8px; border: 1px solid rgba(43,66,84,0.14); border-radius: 999px; background: rgba(255,255,255,0.66); color: rgba(43,66,84,0.66); padding: 8px 11px; font-size: 11px; font-weight: 800; backdrop-filter: blur(12px); }
+        .settings-link { position: fixed; top: calc(14px + env(safe-area-inset-top)); right: 14px; z-index: 70; display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; border: 1px solid rgba(43,66,84,0.14); border-radius: 999px; background: rgba(255,255,255,0.66); color: rgba(43,66,84,0.72); text-decoration: none; backdrop-filter: blur(12px); }
         .settings-link:hover { color: #fff; border-color: rgba(var(--nobu-rgb),0.45); }
         .wake-indicator-dot { width: 6px; height: 6px; border-radius: 999px; background: #34d399; box-shadow: 0 0 10px rgba(52,211,153,0.6); }
         .wake-indicator.blocked .wake-indicator-dot,

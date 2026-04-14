@@ -5,7 +5,7 @@
 import { useEffect, useRef } from 'react'
 
 // You need to provide a Cubism 4 model JSON file and assets.
-// See: https://github.com/guansss/pixi-live2d-display
+// See: https://github.com/RaSan147/pixi-live2d-display
 
 type PixiApp = {
   view: Node
@@ -42,12 +42,11 @@ export default function Nobu2D({ expression, width = 320, height = 480 }: { expr
 
     async function loadModel() {
       const PIXI = await import('pixi.js') as unknown as PixiModule
-      const { Live2DModel } = (await import('@guansss/pixi-live2d-display/cubism4')) as Live2DModule
+      const { Live2DModel } = (await import('pixi-live2d-display-lipsyncpatch/cubism4')) as Live2DModule
       app = new PIXI.Application({
         view: undefined,
         width,
         height,
-        transparent: true,
         backgroundAlpha: 0,
       })
       if (!canvasRef.current) return
