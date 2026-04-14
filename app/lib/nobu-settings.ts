@@ -1,5 +1,11 @@
 export type NobuVoiceId = 'eXpIbVcVbLo8ZJQDlDnl' | '5kMbtRSEKIkRZSdXxrZg'
-export type NobuVibeId = 'chill' | 'sharp' | 'playful' | 'professional'
+export type NobuVibeId =
+  | 'genz'
+  | 'fashionExpert'
+  | 'hypeCoach'
+  | 'chill'
+  | 'minimalist'
+  | 'playful'
 
 export type NobuSettings = {
   name: string
@@ -40,10 +46,36 @@ export const voiceOptions = [
 ]
 
 export const vibeOptions = [
-  { id: 'chill' as const, label: 'Chill & supportive' },
-  { id: 'sharp' as const, label: 'Sharp & direct' },
-  { id: 'playful' as const, label: 'Playful & fun' },
-  { id: 'professional' as const, label: 'Professional & focused' },
+  {
+    id: 'genz' as const,
+    label: 'Gen-Z Mode',
+    description: 'Slangy, hype, funny, and brutally honest.',
+  },
+  {
+    id: 'fashionExpert' as const,
+    label: 'Fashion Expert',
+    description: 'Polished stylist advice with proportion, fit, and color notes.',
+  },
+  {
+    id: 'hypeCoach' as const,
+    label: 'Hype Coach',
+    description: 'Motivational and confidence-first, but still honest.',
+  },
+  {
+    id: 'chill' as const,
+    label: 'Chill Friend',
+    description: 'Relaxed, casual, and easy to talk to.',
+  },
+  {
+    id: 'minimalist' as const,
+    label: 'Minimalist',
+    description: 'Short, direct answers with no extra fluff.',
+  },
+  {
+    id: 'playful' as const,
+    label: 'Playful',
+    description: 'Fun, expressive, and a little dramatic.',
+  },
 ]
 
 export const colorOptions = [
@@ -63,16 +95,38 @@ export function getVoiceOption(voiceId: NobuVoiceId | string) {
 
 export function getVibeInstruction(vibe: NobuVibeId) {
   switch (vibe) {
-    case 'sharp':
-      return 'The user chose Sharp & direct. Be concise, candid, and useful without being harsh.'
+    case 'genz':
+      return 'The user chose Gen-Z Mode. Be slangy, current, funny, and brutally honest without being cruel.'
+    case 'fashionExpert':
+      return 'The user chose Fashion Expert Mode. Give polished stylist advice about fit, proportion, color, silhouette, occasion, and shopping choices.'
+    case 'hypeCoach':
+      return 'The user chose Hype Coach Mode. Be motivational, confidence-building, and energetic while staying honest.'
+    case 'minimalist':
+      return 'The user chose Minimalist Mode. Keep answers short, direct, and practical.'
     case 'playful':
-      return 'The user chose Playful & fun. Keep things light, energetic, and witty when appropriate.'
-    case 'professional':
-      return 'The user chose Professional & focused. Be structured, efficient, and polished.'
+      return 'The user chose Playful Mode. Be fun, expressive, witty, and a little dramatic when appropriate.'
     case 'chill':
     default:
-      return 'The user chose Chill & supportive. Be calm, warm, and steady.'
+      return 'The user chose Chill Friend Mode. Be relaxed, casual, warm, and easy to talk to.'
   }
+}
+
+function migrateVibe(vibe: unknown): NobuVibeId {
+  if (
+    vibe === 'genz' ||
+    vibe === 'fashionExpert' ||
+    vibe === 'hypeCoach' ||
+    vibe === 'chill' ||
+    vibe === 'minimalist' ||
+    vibe === 'playful'
+  ) {
+    return vibe
+  }
+
+  if (vibe === 'sharp') return 'minimalist'
+  if (vibe === 'professional') return 'fashionExpert'
+
+  return DEFAULT_NOBU_SETTINGS.vibe
 }
 
 export function loadNobuSettings(): NobuSettings {
@@ -97,6 +151,7 @@ export function loadNobuSettings(): NobuSettings {
       ...parsed,
       character: migratedCharacter,
       name: parsed.name?.trim() || legacyName || DEFAULT_NOBU_SETTINGS.name,
+      vibe: migrateVibe(parsed.vibe),
       voiceId: migratedVoiceId,
     }
 

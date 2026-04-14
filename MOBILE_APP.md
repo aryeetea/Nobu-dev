@@ -6,6 +6,8 @@ Nobu now has Capacitor native shells for iPhone and Android.
 
 The native apps load your hosted Next.js Nobu app in a native WebView. This is the right setup for the current codebase because Nobu depends on Next API routes, NextAuth, Prisma, and ElevenLabs WebRTC.
 
+Nobu remains the main app. ScanFit is a fashion capability inside Nobu for outfit feedback, smart sizing, look history, and shopping help.
+
 The bundled `capacitor-web/index.html` file is only a fallback screen. The real app URL comes from `CAPACITOR_SERVER_URL`.
 
 ## Production Setup

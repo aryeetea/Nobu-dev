@@ -64,7 +64,7 @@ export default function OnboardingPage() {
         .name-input::placeholder { color: rgba(255,255,255,0.24); }
         .primary-btn { border: 1.5px solid rgba(var(--nobu-rgb),0.5); border-radius: 999px; background: var(--nobu-color); color: #fff; cursor: pointer; font-size: 14px; font-weight: 600; padding: 13px 32px; }
         .choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; width: min(680px, 100%); }
-        .vibe-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; width: min(760px, 100%); }
+        .vibe-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; width: min(860px, 100%); }
         .choice-card { border: 1.5px solid rgba(255,255,255,0.12); border-radius: 8px; background: rgba(255,255,255,0.045); color: #fff; cursor: pointer; min-height: 150px; padding: 22px; text-align: left; transition: border-color 180ms ease, transform 180ms ease, background 180ms ease; }
         .choice-card:hover, .choice-card.selected { border-color: rgba(var(--nobu-rgb),0.72); background: rgba(var(--nobu-rgb),0.13); transform: translateY(-2px); }
         .choice-card h2 { font-size: 24px; margin-bottom: 10px; }
@@ -130,7 +130,7 @@ export default function OnboardingPage() {
 
       {step === 2 && (
         <section className="onboarding-step">
-          <h1 className="onboarding-title">What kind of presence should I have?</h1>
+          <h1 className="onboarding-title">How should I talk to you?</h1>
           <div className="vibe-grid">
             {vibeOptions.map((option) => (
               <button
@@ -139,6 +139,7 @@ export default function OnboardingPage() {
                 onClick={() => setVibe(option.id)}
               >
                 <h2>{option.label}</h2>
+                <p>{option.description}</p>
               </button>
             ))}
           </div>
@@ -150,7 +151,7 @@ export default function OnboardingPage() {
 
       {step === 3 && (
         <section className="onboarding-step">
-          <h1 className="onboarding-title">Pick my color.</h1>
+          <h1 className="onboarding-title">Pick my glow.</h1>
           <div className="color-layout">
             <div className="preview-orb" />
             <div className="color-grid">
@@ -167,7 +168,7 @@ export default function OnboardingPage() {
             </div>
           </div>
           <button className="primary-btn" onClick={completeOnboarding}>
-            Meet {name.trim()}
+            Start with {name.trim()}
           </button>
         </section>
       )}

@@ -7,7 +7,7 @@ import { ReactNode } from 'react'
 
 export const metadata: Metadata = {
   title: 'Nobu',
-  description: 'Your AI team member',
+  description: 'Your personal voice AI assistant for memory, planning, style, and everyday decisions.',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,

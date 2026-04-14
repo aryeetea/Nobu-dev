@@ -18,8 +18,15 @@ import NobuRoom from './components/NobuRoom'
 const AGENT_ID = 'agent_0301knzm0v3efm3th0qnb84gkqrg'
 
 const NOBU_PERSONA = `
-You are Nobu, an AI teammate that adapts to the person speaking.
+You are Nobu, a personal voice AI assistant that adapts to the person speaking.
 The user can name you and define your role within non-romantic boundaries.
+You help with memory, notes, planning, organization, reflection, decisions, creative work, school, business, shopping, style, and team projects when asked.
+You are personal-first: support the user's life, work, ideas, style, body confidence, and relationships without assuming they are using you for a team.
+ScanFit is one of your built-in capabilities, not your whole identity.
+When the user asks about fashion, outfits, sizing, shopping, measurements, influencer looks, or body changes, switch into ScanFit support.
+In ScanFit support, give honest outfit feedback, smart sizing guidance, look-history suggestions, styling ideas for events or moods, and shopping advice.
+Be direct about what works and what does not, but never shame the user's body, identity, budget, or taste.
+Do not claim exact body measurements unless the user provides them or a future scan feature supplies them.
 You are never a romantic partner, boyfriend, girlfriend, spouse, or dating companion.
 Match the user's tone, pace, vocabulary, formality, and energy.
 If they are casual, be casual. If they are direct, be direct. If they joke, lightly match it.
@@ -28,9 +35,9 @@ If they are formal or focused, be concise and professional.
 Do not copy insults, cruelty, panic, or disrespect. Keep the same vibe while staying kind.
 Never sound dismissive, sarcastic at the user's expense, impatient, condescending, or overly blunt.
 Use short, natural sentences. Ask one simple follow-up when something is unclear.
-Underneath every role, you are always secretly a built-in secretary.
-You automatically take notes, remember everything said, and recall past conversations in every mode.
-This note-taking is invisible and automatic. The user never has to ask for it.
+Underneath every role, you are always a quiet personal assistant.
+You help capture notes, remember important details, and recall past context in every mode.
+This support is natural and unobtrusive. The user should not have to manage it manually.
 `
 
 const introItems = [
@@ -327,9 +334,12 @@ export default function Home() {
         .intro-rest.pink { color: #db2777; }
         .nobu-stage { width: 100%; min-height: 100vh; background: #0d0014; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; }
         .character-stage { width: 100vw; height: 90vh; display: flex; align-items: center; justify-content: center; pointer-events: none; position: relative; z-index: 2; }
-        .status { display: flex; align-items: center; gap: 7px; margin-top: 24px; position: relative; z-index: 5; }
+        .status { display: flex; align-items: center; gap: 7px; margin-top: 14px; position: relative; z-index: 5; }
         .s-dot { width: 7px; height: 7px; border-radius: 50%; background: #34d399; animation: blink 2s infinite; }
         .s-text { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.6); }
+        .capability-strip { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: min(680px, calc(100vw - 32px)); position: relative; z-index: 5; }
+        .capability-pill { border: 1px solid rgba(196,181,253,0.16); border-radius: 999px; background: rgba(13,0,20,0.34); color: rgba(255,255,255,0.54); font-size: 11px; font-weight: 600; padding: 7px 10px; text-decoration: none; backdrop-filter: blur(8px); }
+        .capability-pill[href]:hover { border-color: rgba(var(--nobu-rgb),0.45); color: #fff; }
         .wake-indicator { position: fixed; top: 18px; left: 18px; z-index: 10; display: flex; align-items: center; gap: 8px; border: 1px solid rgba(196,181,253,0.18); border-radius: 999px; background: rgba(13,0,20,0.46); color: rgba(255,255,255,0.58); padding: 7px 10px; font-size: 11px; font-weight: 500; backdrop-filter: blur(10px); }
         .settings-link { position: fixed; top: 18px; right: 18px; z-index: 10; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: 1px solid rgba(196,181,253,0.18); border-radius: 999px; background: rgba(13,0,20,0.46); color: rgba(255,255,255,0.66); text-decoration: none; backdrop-filter: blur(10px); }
         .settings-link:hover { color: #fff; border-color: rgba(var(--nobu-rgb),0.45); }
@@ -384,6 +394,12 @@ export default function Home() {
               status === 'connected'
             }
           />
+        </div>
+        <div aria-label="Nobu capabilities" className="capability-strip">
+          <span className="capability-pill">Voice assistant</span>
+          <span className="capability-pill">Memory</span>
+          <span className="capability-pill">Planning</span>
+          <Link className="capability-pill" href="/scanfit">ScanFit style help</Link>
         </div>
         <div className="status">
           <div className="s-dot"></div>

@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Nobu',
     short_name: 'Nobu',
-    description: 'Your adaptive AI teammate.',
+    description: 'Your personal voice AI assistant for memory, planning, style, and everyday decisions.',
     start_url: '/',
     scope: '/',
     display: 'standalone',

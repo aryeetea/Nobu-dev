@@ -93,7 +93,7 @@ export default function SettingsPage() {
         <header>
           <h1 className="settings-title">Settings</h1>
           <p className="settings-subtitle">
-            Shape how Nobu shows up. The name is protected, but voice, vibe, and color can shift with you.
+            Shape how Nobu talks, remembers, and helps. ScanFit is always available when you ask for outfit, sizing, or shopping advice.
           </p>
         </header>
 
@@ -163,7 +163,7 @@ export default function SettingsPage() {
           </div>
 
           <div className="setting-row">
-            <div className="setting-label">Vibe</div>
+            <div className="setting-label">Talk Mode</div>
             <div className="option-grid">
               {vibeOptions.map((option) => (
                 <button
@@ -172,6 +172,7 @@ export default function SettingsPage() {
                   onClick={() => updateSettings({ vibe: option.id as NobuVibeId })}
                 >
                   <strong>{option.label}</strong>
+                  <p className="muted">{option.description}</p>
                 </button>
               ))}
             </div>
