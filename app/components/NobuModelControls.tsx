@@ -147,7 +147,7 @@ export default function NobuModelControls({
               onClick={() => onExpressionSelect(null)}
               type="button"
             >
-              Auto
+              Voice Auto
             </button>
             {model.expressions.map((expression) => (
               <button

@@ -3,7 +3,7 @@
 import { useConversation } from '@elevenlabs/react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   DEFAULT_NOBU_SETTINGS,
   getVibeInstruction,
@@ -16,6 +16,12 @@ import NobuCharacter from './components/NobuCharacter'
 import NobuModelControls from './components/NobuModelControls'
 import NobuRoom from './components/NobuRoom'
 import type { Live2DMotionOption } from './lib/live2d-models'
+import {
+  getNobuVisualState,
+  inferNobuEmotionFromText,
+  normalizeNobuEmotion,
+  type NobuEmotion,
+} from './lib/nobu-emotions'
 
 const AGENT_ID = 'agent_0301knzm0v3efm3th0qnb84gkqrg'
 
@@ -40,6 +46,10 @@ Use short, natural sentences. Ask one simple follow-up when something is unclear
 Underneath every role, you are always a quiet personal assistant.
 You help capture notes, remember important details, and recall past context in every mode.
 This support is natural and unobtrusive. The user should not have to manage it manually.
+Your voice, mood, and visible character emotion must match.
+When your emotional tone changes, call the client tool set_visual_emotion before or during your response.
+Use only one of these visual emotions: neutral, happy, laughing, sad, crying, angry, confused, surprised, thinking, blush, dizzy, fashion, cool, encouraging.
+Never laugh while setting a sad or crying visual emotion, and never sound sad while setting a happy or laughing visual emotion.
 `
 
 const introItems = [
@@ -102,6 +112,12 @@ function transcriptContainsWakeWord(transcript: string, wakeWord: string) {
     .test(transcript)
 }
 
+function transcriptContainsWakeName(transcript: string, name: string) {
+  const wakeNames = Array.from(new Set([name.trim(), 'Nobu']))
+
+  return wakeNames.some((wakeName) => transcriptContainsWakeWord(transcript, wakeName))
+}
+
 export default function Home() {
   const router = useRouter()
   const { data: session, status: authStatus } = useSession()
@@ -109,16 +125,51 @@ export default function Home() {
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const shouldListenForWakeRef = useRef(true)
   const wakeStartingRef = useRef(false)
+  const lastVisualEmotionRef = useRef<NobuEmotion>('neutral')
+  const lastExplicitVisualEmotionAtRef = useRef(0)
   const [settings, setSettings] = useState<NobuSettings>(DEFAULT_NOBU_SETTINGS)
   const [character, setCharacter] = useState<'female' | 'male'>('female')
-  const [expressionIndex, setExpressionIndex] = useState<number | null>(null)
+  const [manualExpressionIndex, setManualExpressionIndex] = useState<number | null>(null)
+  const [autoExpressionIndex, setAutoExpressionIndex] = useState<number | null>(null)
   const [motionRequest, setMotionRequest] = useState<
     { group: string; id: number; index: number } | null
   >(null)
   const [modelToggles, setModelToggles] = useState<Record<string, boolean>>({})
+  const [autoModelToggles, setAutoModelToggles] = useState<Record<string, boolean>>({})
   const [introVisible, setIntroVisible] = useState(true)
   const [introExiting, setIntroExiting] = useState(false)
   const [wakeListenStatus, setWakeListenStatus] = useState<WakeListenStatus>('idle')
+  const activeExpressionIndex = manualExpressionIndex ?? autoExpressionIndex
+  const activeModelToggles = {
+    ...autoModelToggles,
+    ...modelToggles,
+  }
+
+  const triggerMotion = useCallback((motion: Live2DMotionOption) => {
+    setMotionRequest((current) => ({
+      group: motion.group,
+      id: (current?.id ?? 0) + 1,
+      index: motion.index,
+    }))
+  }, [])
+
+  const applyVisualEmotion = useCallback((emotion: NobuEmotion, options?: { explicit?: boolean }) => {
+    const visualState = getNobuVisualState(character, emotion)
+    const previousEmotion = lastVisualEmotionRef.current
+
+    if (options?.explicit) {
+      lastExplicitVisualEmotionAtRef.current = Date.now()
+    }
+
+    lastVisualEmotionRef.current = visualState.emotion
+    setAutoExpressionIndex(visualState.expressionIndex)
+    setAutoModelToggles(visualState.toggles)
+
+    if (visualState.motion && visualState.emotion !== previousEmotion) {
+      triggerMotion(visualState.motion)
+    }
+  }, [character, triggerMotion])
+
   // Conversation state from SDK
   const {
     startSession,
@@ -126,7 +177,13 @@ export default function Home() {
     status,
     isSpeaking,
     isListening,
-  } = useConversation()
+  } = useConversation({
+    onMessage: ({ message, role }) => {
+      if (role !== 'agent') return
+      if (Date.now() - lastExplicitVisualEmotionAtRef.current < 2500) return
+      applyVisualEmotion(inferNobuEmotionFromText(message))
+    },
+  })
 
   function stopWakeListening() {
     shouldListenForWakeRef.current = false
@@ -149,11 +206,7 @@ export default function Home() {
   }
 
   function selectMotion(motion: Live2DMotionOption) {
-    setMotionRequest((current) => ({
-      group: motion.group,
-      id: (current?.id ?? 0) + 1,
-      index: motion.index,
-    }))
+    triggerMotion(motion)
   }
 
   function changeModelToggle(parameterId: string, enabled: boolean) {
@@ -169,6 +222,13 @@ export default function Home() {
       await startSession({
         agentId: AGENT_ID,
         connectionType: 'webrtc',
+        clientTools: {
+          set_visual_emotion: ({ emotion }: { emotion?: unknown }) => {
+            const visualEmotion = normalizeNobuEmotion(emotion)
+            applyVisualEmotion(visualEmotion, { explicit: true })
+            return `Nobu visual emotion set to ${visualEmotion}.`
+          },
+        },
         overrides: {
           agent: {
             prompt: { prompt: `${NOBU_PERSONA}\nYour name is ${settings.name}. ${getVibeInstruction(settings.vibe)}` },
@@ -190,8 +250,12 @@ export default function Home() {
       const nextSettings = loadNobuSettings()
       setSettings(nextSettings)
       setCharacter(nextSettings.character)
-      setExpressionIndex(null)
+      setManualExpressionIndex(null)
+      setAutoExpressionIndex(null)
       setModelToggles({})
+      setAutoModelToggles({})
+      lastVisualEmotionRef.current = 'neutral'
+      lastExplicitVisualEmotionAtRef.current = 0
     }
 
     syncSettings()
@@ -275,7 +339,7 @@ export default function Home() {
       recognition.onresult = (event: SpeechRecognitionEvent) => {
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           const transcript = event.results[i][0].transcript.trim().toLowerCase()
-          if (transcriptContainsWakeWord(transcript, settings.name)) {
+          if (transcriptContainsWakeName(transcript, settings.name)) {
             wakeActive = false
             recognition?.stop()
             startNobuConversation()
@@ -317,7 +381,8 @@ export default function Home() {
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           const transcript = event.results[i][0].transcript.trim().toLowerCase()
           const donePhrase = `ok ${settings.name.toLowerCase()}, we are done for today`
-          if (transcript.includes(donePhrase)) {
+          const nobuDonePhrase = 'ok nobu, we are done for today'
+          if (transcript.includes(donePhrase) || transcript.includes(nobuDonePhrase)) {
             endActive = false
             recognition?.stop()
             endSession()
@@ -408,7 +473,7 @@ export default function Home() {
         <div className="character-stage">
           <NobuCharacter
             character={character}
-            expressionIndex={expressionIndex}
+            expressionIndex={activeExpressionIndex}
             isListening={isListening}
             isSpeaking={isSpeaking}
             motionRequest={motionRequest}
@@ -417,15 +482,15 @@ export default function Home() {
               status === 'connecting' ||
               status === 'connected'
             }
-            toggles={modelToggles}
+            toggles={activeModelToggles}
           />
         </div>
         <NobuModelControls
           character={character}
-          onExpressionSelect={setExpressionIndex}
+          onExpressionSelect={setManualExpressionIndex}
           onMotionSelect={selectMotion}
           onToggleChange={changeModelToggle}
-          selectedExpressionIndex={expressionIndex}
+          selectedExpressionIndex={manualExpressionIndex}
           toggles={modelToggles}
         />
         <div className="status">
@@ -438,7 +503,7 @@ export default function Home() {
         <span className="wake-indicator-dot" />
         <span>
           {wakeListenStatus === 'listening'
-            ? `Listening for "${settings.name}"`
+            ? `Listening for "${settings.name}" or "Nobu"`
             : wakeListenStatus === 'blocked'
               ? 'Wake word off'
               : wakeListenStatus === 'unsupported'
