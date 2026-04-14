@@ -34,22 +34,6 @@ This note-taking is invisible and automatic. The user never has to ask for it.
 `
 
 const introItems = [
-  { prefix: 'Your', rest: 'teammate.', tone: 'purple' },
-  { prefix: 'Your', rest: 'thinking partner.', tone: 'green' },
-  { prefix: 'Your', rest: 'diary.', tone: 'pink' },
-  { prefix: 'Your', rest: 'strategist.', tone: 'purple' },
-  { prefix: 'Your', rest: 'memory.', tone: 'green' },
-  { prefix: 'Your', rest: 'confidant.', tone: 'pink' },
-  { prefix: 'Your', rest: 'extra seat.', tone: 'purple' },
-  { prefix: 'Your', rest: 'journal.', tone: 'green' },
-  { prefix: 'Your', rest: 'brainstorm buddy.', tone: 'pink' },
-  { prefix: 'Your', rest: 'note taker.', tone: 'purple' },
-  { prefix: 'Your', rest: 'trusted friend.', tone: 'green' },
-  { prefix: 'Your', rest: 'therapist.', tone: 'pink' },
-  { prefix: 'Your', rest: 'co-founder.', tone: 'purple' },
-  { prefix: 'Your', rest: 'creative director.', tone: 'green' },
-  { prefix: 'Your', rest: 'accountability partner.', tone: 'pink' },
-  { prefix: 'Whatever', rest: 'you need.', tone: 'purple' },
   { prefix: 'Your', rest: 'Nobu.', tone: 'green', final: true },
 ]
 
@@ -213,22 +197,22 @@ export default function Home() {
     const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
     async function runIntro() {
-      await sleep(400)
+      await sleep(150)
       for (const word of words) {
         if (!word || cancelled) return
         const w = word
         const isFinal = w.dataset.final === 'true'
-        w.style.transition = 'opacity 0.3s ease, transform 0.3s ease'
+        w.style.transition = 'opacity 0.22s ease, transform 0.22s ease'
         w.style.opacity = '1'
         w.style.transform = 'translateY(0)'
-        await sleep(isFinal ? 1050 : 600)
+        await sleep(isFinal ? 600 : 450)
         if (cancelled) return
         w.style.opacity = '0'
         w.style.transform = 'translateY(-10px)'
-        await sleep(300)
+        await sleep(220)
       }
       setIntroExiting(true)
-      await sleep(700)
+      await sleep(260)
       if (!cancelled) {
         setIntroVisible(false)
       }
