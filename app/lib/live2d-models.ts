@@ -28,6 +28,7 @@ export type Live2DModelDefinition = {
   id: Live2DCharacterId
   label: string
   path: string
+  performancePath?: string
   credit: Live2DModelCredit
   expressions: Live2DExpressionOption[]
   motions: Live2DMotionOption[]
@@ -38,7 +39,8 @@ export const live2dModels: Record<Live2DCharacterId, Live2DModelDefinition> = {
   female: {
     id: 'female',
     label: 'Alexia',
-    path: '/models/Alexia/Alexia.app.model3.json',
+    path: '/models/Alexia/Alexia.model3.json',
+    performancePath: '/models/Alexia/Alexia.app.model3.json',
     credit: {
       modelName: 'Alexia',
       creator: 'Creator credit needed',
@@ -87,7 +89,8 @@ export const live2dModels: Record<Live2DCharacterId, Live2DModelDefinition> = {
   male: {
     id: 'male',
     label: 'Asuka',
-    path: '/models/ASUKA/Asuka.app.model3.json',
+    path: '/models/ASUKA/Asuka.model3.json',
+    performancePath: '/models/ASUKA/Asuka.app.model3.json',
     credit: {
       modelName: 'Asuka',
       creator: 'Creator credit needed',

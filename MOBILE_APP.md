@@ -8,6 +8,15 @@ The app should not depend on Netlify by default. Capacitor now loads the bundled
 
 For the character renderer, the target is the official Live2D Cubism SDK so Alexia and Asuka stay in their original Live2D format. Do not convert, redraw, flatten, or re-rig creator art into another system unless the creator explicitly approves it.
 
+## Creator Originals First
+
+Nobu should load the creator's original model definitions first:
+
+- Alexia: `public/models/Alexia/Alexia.model3.json`
+- Asuka: `public/models/ASUKA/Asuka.model3.json`
+
+The `*.app.model3.json` files and `2048` texture folders are performance fallbacks only. Use them only if the official native SDK build needs a lighter mobile profile after testing on real devices.
+
 ## Native Live2D Plan
 
 1. Download the official Live2D Cubism SDKs from Live2D:
@@ -31,6 +40,18 @@ For the character renderer, the target is the official Live2D Cubism SDK so Alex
    - `setSpeaking(true | false)`
    - `setListening(true | false)`
    - `setRoomAction("bed" | "desk" | "chair" | "window" | "center")`
+
+## Camera Vision Plan
+
+Camera vision belongs in the native app flow, not as a website-only shortcut.
+
+1. Ask for camera permission only when the user chooses a visual action.
+2. Let the user capture or pick an image of an outfit, room, note, or object.
+3. Send a resized image to a secure server route for AI analysis.
+4. Return a short, voice-friendly answer to Nobu.
+5. Map the answer tone to Live2D expression and motion commands so the character matches the voice.
+
+Do not put private AI provider keys in `NEXT_PUBLIC_` environment variables. Camera analysis should go through a server-side route or native secure backend.
 
 ## Temporary Remote Testing
 
@@ -62,12 +83,14 @@ Open Android Studio:
 npm run mobile:android
 ```
 
-## Voice Permissions
+## Voice And Camera Permissions
 
-The native projects include microphone permissions:
+The native projects include microphone and camera permissions:
 
 - iOS: `NSMicrophoneUsageDescription`
+- iOS: `NSCameraUsageDescription`
 - Android: `RECORD_AUDIO`
+- Android: `CAMERA`
 
 ## Live2D Model Credits
 

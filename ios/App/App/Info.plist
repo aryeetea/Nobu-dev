@@ -24,8 +24,10 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Nobu uses your camera so you can show outfits, rooms, notes, and objects for visual help.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Nobu uses your microphone so you can speak with your AI teammate.</string>
+	<string>Nobu uses your microphone so you can talk with your personal voice assistant.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
