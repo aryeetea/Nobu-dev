@@ -5,11 +5,13 @@ import { useEffect, useRef, useState } from 'react'
 
 type Character = 'female' | 'male'
 type LoadStatus = 'idle' | 'loading' | 'success' | 'fail'
+export type NobuRoomAction = 'center' | 'desk' | 'chair' | 'bed' | 'shelf'
 
 type Props = {
   character: Character
   isSpeaking: boolean
   isListening: boolean
+  roomAction?: NobuRoomAction
   shouldLoad?: boolean
 }
 
@@ -18,6 +20,9 @@ type Oml2dInstance = {
   clearTips: () => void
   stopTipsIdle: () => void
   statusBarClearEvents: () => void
+  setModelPosition: (position: { x?: number; y?: number }) => void
+  setModelRotation: (rotation: number) => void
+  setModelScale: (scale: number) => void
 }
 
 type Oml2dGlobal = {
@@ -45,6 +50,51 @@ const CHARACTER_COPY: Record<Character, string> = {
 
 function isSmallScreen() {
   return window.matchMedia('(max-width: 760px)').matches
+}
+
+function getRoomPose(action: NobuRoomAction, smallScreen: boolean) {
+  const baseScale = smallScreen ? 0.075 : 0.09
+
+  switch (action) {
+    case 'desk':
+      return {
+        position: smallScreen ? { x: 70, y: 88 } : { x: 128, y: 78 },
+        rotation: 0,
+        scale: baseScale,
+      }
+    case 'chair':
+      return {
+        position: smallScreen ? { x: 90, y: 100 } : { x: 168, y: 92 },
+        rotation: -2,
+        scale: baseScale * 0.96,
+      }
+    case 'bed':
+      return {
+        position: smallScreen ? { x: -78, y: 112 } : { x: -190, y: 110 },
+        rotation: -7,
+        scale: baseScale * 0.86,
+      }
+    case 'shelf':
+      return {
+        position: smallScreen ? { x: -84, y: 84 } : { x: -202, y: 78 },
+        rotation: 2,
+        scale: baseScale * 0.98,
+      }
+    case 'center':
+    default:
+      return {
+        position: smallScreen ? { x: 0, y: 80 } : { x: 0, y: 70 },
+        rotation: 0,
+        scale: baseScale,
+      }
+  }
+}
+
+function applyRoomPose(instance: Oml2dInstance, action: NobuRoomAction) {
+  const pose = getRoomPose(action, isSmallScreen())
+  instance.setModelPosition(pose.position)
+  instance.setModelRotation(pose.rotation)
+  instance.setModelScale(pose.scale)
 }
 
 function loadOml2dRuntime() {
@@ -88,12 +138,18 @@ export default function NobuCharacter({
   character,
   isSpeaking,
   isListening,
+  roomAction = 'center',
   shouldLoad = true,
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null)
   const instanceRef = useRef<Oml2dInstance | null>(null)
+  const roomActionRef = useRef(roomAction)
   const [loadStatus, setLoadStatus] = useState<LoadStatus>('idle')
   const [errorMessage, setErrorMessage] = useState('')
+
+  useEffect(() => {
+    roomActionRef.current = roomAction
+  }, [roomAction])
 
   useEffect(() => {
     if (!shouldLoad || !hostRef.current) {
@@ -123,7 +179,7 @@ export default function NobuCharacter({
         const instance = loadOml2d({
           parentElement: hostRef.current,
           mobileDisplay: true,
-          primaryColor: '#7c3aed',
+          primaryColor: '#0f766e',
           sayHello: false,
           transitionTime: 250,
           initialStatus: 'active',
@@ -210,6 +266,7 @@ export default function NobuCharacter({
             instance.clearTips()
             instance.stopTipsIdle()
             instance.statusBarClearEvents()
+            applyRoomPose(instance, roomActionRef.current)
           }
         })
       } catch (error) {
@@ -235,6 +292,11 @@ export default function NobuCharacter({
       host.replaceChildren()
     }
   }, [character, shouldLoad])
+
+  useEffect(() => {
+    if (loadStatus !== 'success' || !instanceRef.current) return
+    applyRoomPose(instanceRef.current, roomAction)
+  }, [loadStatus, roomAction])
 
   return (
     <div

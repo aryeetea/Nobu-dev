@@ -12,7 +12,7 @@ import {
   type NobuSettings,
 } from './lib/nobu-settings'
 import { useSession } from 'next-auth/react'
-import NobuCharacter from './components/NobuCharacter'
+import NobuCharacter, { type NobuRoomAction } from './components/NobuCharacter'
 import NobuRoom from './components/NobuRoom'
 
 const AGENT_ID = 'agent_0301knzm0v3efm3th0qnb84gkqrg'
@@ -103,6 +103,16 @@ function transcriptContainsWakeWord(transcript: string, wakeWord: string) {
 export default function Home() {
   const router = useRouter()
   const { data: session, status: authStatus } = useSession()
+  const stageRef = useRef<HTMLDivElement>(null)
+  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const shouldListenForWakeRef = useRef(true)
+  const wakeStartingRef = useRef(false)
+  const [settings, setSettings] = useState<NobuSettings>(DEFAULT_NOBU_SETTINGS)
+  const [character, setCharacter] = useState<'female' | 'male'>('female')
+  const [roomAction, setRoomAction] = useState<NobuRoomAction>('center')
+  const [introVisible, setIntroVisible] = useState(true)
+  const [introExiting, setIntroExiting] = useState(false)
+  const [wakeListenStatus, setWakeListenStatus] = useState<WakeListenStatus>('idle')
   // Conversation state from SDK
   const {
     startSession,
@@ -111,15 +121,6 @@ export default function Home() {
     isSpeaking,
     isListening,
   } = useConversation()
-  const stageRef = useRef<HTMLDivElement>(null)
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
-  const shouldListenForWakeRef = useRef(true)
-  const wakeStartingRef = useRef(false)
-  const [settings, setSettings] = useState<NobuSettings>(DEFAULT_NOBU_SETTINGS)
-  const [character, setCharacter] = useState<'female' | 'male'>('female')
-  const [introVisible, setIntroVisible] = useState(true)
-  const [introExiting, setIntroExiting] = useState(false)
-  const [wakeListenStatus, setWakeListenStatus] = useState<WakeListenStatus>('idle')
 
   function stopWakeListening() {
     shouldListenForWakeRef.current = false
@@ -153,7 +154,7 @@ export default function Home() {
             firstMessage: `Hey, I'm ${settings.name}. I'm here — talk to me.`
           },
           tts: { voiceId: settings.voiceId }
-        }
+        },
       })
     } catch (error) {
       // Optionally handle error
@@ -329,19 +330,19 @@ export default function Home() {
         .intro.exiting { opacity: 0; pointer-events: none; }
         .intro-word { position: absolute; max-width: calc(100vw - 40px); text-align: center; font-size: 64px; font-weight: 600; letter-spacing: 0; line-height: 1.05; opacity: 0; pointer-events: none; transform: translateY(10px); }
         .intro-prefix { color: #fff; }
-        .intro-rest.purple { color: #7c3aed; }
+        .intro-rest.teal { color: #0f766e; }
         .intro-rest.green { color: #059669; }
         .intro-rest.pink { color: #db2777; }
-        .nobu-stage { width: 100%; min-height: 100vh; background: #0d0014; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+        .nobu-stage { width: 100%; min-height: 100vh; background: #e7f0ec; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; }
         .character-stage { width: 100vw; height: 90vh; display: flex; align-items: center; justify-content: center; pointer-events: none; position: relative; z-index: 2; }
         .status { display: flex; align-items: center; gap: 7px; margin-top: 14px; position: relative; z-index: 5; }
         .s-dot { width: 7px; height: 7px; border-radius: 50%; background: #34d399; animation: blink 2s infinite; }
-        .s-text { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.6); }
+        .s-text { font-size: 13px; font-weight: 700; color: rgba(21,45,43,0.7); }
         .capability-strip { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: min(680px, calc(100vw - 32px)); position: relative; z-index: 5; }
-        .capability-pill { border: 1px solid rgba(196,181,253,0.16); border-radius: 999px; background: rgba(13,0,20,0.34); color: rgba(255,255,255,0.54); font-size: 11px; font-weight: 600; padding: 7px 10px; text-decoration: none; backdrop-filter: blur(8px); }
+        .capability-pill { border: 1px solid rgba(15,118,110,0.18); border-radius: 999px; background: rgba(255,255,255,0.62); color: rgba(21,45,43,0.68); font-size: 11px; font-weight: 700; padding: 7px 10px; text-decoration: none; backdrop-filter: blur(8px); }
         .capability-pill[href]:hover { border-color: rgba(var(--nobu-rgb),0.45); color: #fff; }
-        .wake-indicator { position: fixed; top: 18px; left: 18px; z-index: 10; display: flex; align-items: center; gap: 8px; border: 1px solid rgba(196,181,253,0.18); border-radius: 999px; background: rgba(13,0,20,0.46); color: rgba(255,255,255,0.58); padding: 7px 10px; font-size: 11px; font-weight: 500; backdrop-filter: blur(10px); }
-        .settings-link { position: fixed; top: 18px; right: 18px; z-index: 10; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: 1px solid rgba(196,181,253,0.18); border-radius: 999px; background: rgba(13,0,20,0.46); color: rgba(255,255,255,0.66); text-decoration: none; backdrop-filter: blur(10px); }
+        .wake-indicator { position: fixed; top: 18px; left: 18px; z-index: 10; display: flex; align-items: center; gap: 8px; border: 1px solid rgba(15,118,110,0.18); border-radius: 999px; background: rgba(255,255,255,0.68); color: rgba(21,45,43,0.66); padding: 7px 10px; font-size: 11px; font-weight: 700; backdrop-filter: blur(10px); }
+        .settings-link { position: fixed; top: 18px; right: 18px; z-index: 10; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: 1px solid rgba(15,118,110,0.18); border-radius: 999px; background: rgba(255,255,255,0.68); color: rgba(21,45,43,0.7); text-decoration: none; backdrop-filter: blur(10px); }
         .settings-link:hover { color: #fff; border-color: rgba(var(--nobu-rgb),0.45); }
         .wake-indicator-dot { width: 6px; height: 6px; border-radius: 999px; background: #34d399; box-shadow: 0 0 10px rgba(52,211,153,0.6); }
         .wake-indicator.blocked .wake-indicator-dot,
@@ -367,7 +368,11 @@ export default function Home() {
 
       {/* NobuCharacter in the room environment */}
       <div className={`nobu-stage${status === 'connected' ? ' awake' : ''}`} ref={stageRef}>
-        <NobuRoom />
+        <NobuRoom
+          activeAction={roomAction}
+          character={character}
+          onActionChange={setRoomAction}
+        />
         <Link aria-label="Open Nobu settings" className="settings-link" href="/settings">
           <svg aria-hidden="true" fill="none" height="17" viewBox="0 0 24 24" width="17">
             <path
@@ -388,6 +393,7 @@ export default function Home() {
             character={character}
             isListening={isListening}
             isSpeaking={isSpeaking}
+            roomAction={roomAction}
             shouldLoad={
               !introVisible ||
               status === 'connecting' ||
