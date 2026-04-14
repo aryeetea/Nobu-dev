@@ -10,6 +10,7 @@
     "cap:sync": "cap sync",
     "cap:open:ios": "cap open ios",
     "cap:open:android": "cap open android",
+    "mobile:prepare-live2d": "node scripts/prepare-live2d-sdk.mjs",
     "mobile:preflight": "node scripts/mobile-preflight.mjs",
     "mobile:sync": "cap sync",
     "mobile:ios": "cap open ios",

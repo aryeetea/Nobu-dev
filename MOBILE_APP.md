@@ -88,6 +88,22 @@ For the real app build, leave `CAPACITOR_SERVER_URL` unset:
 npm run mobile:sync
 ```
 
+## Prepare Live2D SDK Locally
+
+After downloading the official Native SDK zip, prepare the local ignored SDK folders:
+
+```bash
+npm run mobile:prepare-live2d -- /Users/naaayele/Downloads/CubismSdkForNative-5-r.5.zip
+```
+
+This creates:
+
+- `vendor/live2d/ios`
+- `vendor/live2d/android`
+- `vendor/live2d/sdk-source`
+
+These folders are ignored by git so the licensed SDK files stay on your machine.
+
 ## Local iOS
 
 Open Xcode:
