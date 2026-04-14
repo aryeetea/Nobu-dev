@@ -4,49 +4,51 @@ type Props = {
   character: 'female' | 'male'
 }
 
-const characterDetails = {
+const roomThemes = {
   female: {
-    accent: '#e85d9b',
-    curtain: '#f0a7bf',
-    blanket: '#222832',
-    pillow: '#fff1a8',
-    wallTop: '#dceff3',
-    wallBottom: '#f4f8fb',
-    skyTop: '#8fd0e8',
-    skyMid: '#e8c9d9',
-    skyBottom: '#fff0bd',
-    furniture: '#24313a',
-    wood: '#557c91',
-    shelfGlass: '#ffffff',
-    floor: '#edf4fb',
-    label: 'Alexia',
+    wall: '#f8eef4',
+    wallShade: '#eadce8',
+    trim: '#ffffff',
+    skyTop: '#91c7e6',
+    skyBottom: '#ffd8e4',
+    mountain: '#9eb9b4',
+    accent: '#d85b8f',
+    accentSoft: '#f4aac7',
+    dark: '#25323a',
+    wood: '#8b6f48',
+    woodLight: '#d9ba7c',
+    blanket: '#20252d',
+    rug: '#f5c1d6',
+    plant: '#16473f',
+    lamp: '#ffd782',
   },
   male: {
-    accent: '#3b82f6',
-    curtain: '#9fd4ff',
-    blanket: '#253b4e',
-    pillow: '#b7f7cf',
-    wallTop: '#def3fb',
-    wallBottom: '#f5fbff',
-    skyTop: '#8bd8ff',
-    skyMid: '#cfe6f7',
-    skyBottom: '#d9fff1',
-    furniture: '#26475b',
-    wood: '#4d7890',
-    shelfGlass: '#ffffff',
-    floor: '#edf6ff',
-    label: 'Asuka',
+    wall: '#eef7fb',
+    wallShade: '#d9edf6',
+    trim: '#ffffff',
+    skyTop: '#83c8ef',
+    skyBottom: '#d6fff1',
+    mountain: '#8fb7be',
+    accent: '#3b82c4',
+    accentSoft: '#a9d8ff',
+    dark: '#263b48',
+    wood: '#846d4d',
+    woodLight: '#d3b37a',
+    blanket: '#273d4d',
+    rug: '#bfe2f5',
+    plant: '#174d43',
+    lamp: '#ffe08d',
   },
 }
 
 export default function NobuRoom({ character }: Props) {
-  const theme = characterDetails[character]
+  const theme = roomThemes[character]
 
   return (
-    <section aria-label={`${theme.label} anime studio apartment`} className="nobu-room">
+    <section aria-label="Anime studio apartment" className="nobu-room">
       <style>{`
         .nobu-room {
-          background: ${theme.wallBottom};
+          background: ${theme.wall};
           inset: 0;
           overflow: hidden;
           position: absolute;
@@ -63,80 +65,78 @@ export default function NobuRoom({ character }: Props) {
           display: none;
         }
 
-        .sun-glow {
-          animation: sun-breathe 7s ease-in-out infinite;
-          transform-origin: 1038px 178px;
+        .sun {
+          animation: room-sun 7s ease-in-out infinite;
+          transform-box: fill-box;
+          transform-origin: center;
         }
 
-        .curtain-left {
-          animation: curtain-left 8s ease-in-out infinite;
-          transform-origin: 370px 88px;
-        }
-
-        .curtain-right {
-          animation: curtain-right 8s ease-in-out infinite;
-          transform-origin: 1070px 88px;
+        .curtain {
+          animation: room-curtain 8s ease-in-out infinite;
+          transform-box: fill-box;
+          transform-origin: top center;
         }
 
         .lamp-glow {
-          animation: lamp-breathe 5.8s ease-in-out infinite;
-          transform-origin: 1058px 548px;
-        }
-
-        .screen-glow {
-          animation: screen-pulse 5s ease-in-out infinite;
+          animation: room-glow 5.5s ease-in-out infinite;
+          transform-box: fill-box;
+          transform-origin: center;
         }
 
         .plant-leaf {
-          animation: plant-sway 6.5s ease-in-out infinite;
-          transform-origin: 214px 742px;
+          animation: room-leaf 6s ease-in-out infinite;
+          transform-box: fill-box;
+          transform-origin: bottom center;
         }
 
         .sparkle {
-          animation: sparkle 4.5s ease-in-out infinite;
+          animation: room-sparkle 4.8s ease-in-out infinite;
+        }
+
+        .fairy-light {
+          animation: room-light-twinkle 3.8s ease-in-out infinite;
         }
 
         .sparkle:nth-of-type(2n) {
-          animation-delay: 1.4s;
+          animation-delay: 1.2s;
         }
 
-        .sparkle:nth-of-type(3n) {
-          animation-delay: 2.2s;
+        .fairy-light:nth-of-type(2n) {
+          animation-delay: 0.8s;
         }
 
-        @keyframes sun-breathe {
-          0%, 100% { opacity: 0.22; transform: scale(0.98); }
-          50% { opacity: 0.42; transform: scale(1.04); }
+        .fairy-light:nth-of-type(3n) {
+          animation-delay: 1.6s;
         }
 
-        @keyframes curtain-left {
-          0%, 100% { transform: skewY(0deg); }
-          50% { transform: skewY(1.2deg); }
+        @keyframes room-sun {
+          0%, 100% { opacity: 0.82; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.04); }
         }
 
-        @keyframes curtain-right {
-          0%, 100% { transform: skewY(0deg); }
-          50% { transform: skewY(-1.1deg); }
+        @keyframes room-curtain {
+          0%, 100% { transform: skewX(0deg); }
+          50% { transform: skewX(1.5deg); }
         }
 
-        @keyframes lamp-breathe {
-          0%, 100% { opacity: 0.18; transform: scale(0.98); }
-          50% { opacity: 0.38; transform: scale(1.04); }
+        @keyframes room-glow {
+          0%, 100% { opacity: 0.2; transform: scale(0.98); }
+          50% { opacity: 0.44; transform: scale(1.05); }
         }
 
-        @keyframes screen-pulse {
-          0%, 100% { opacity: 0.48; }
-          50% { opacity: 0.74; }
-        }
-
-        @keyframes plant-sway {
+        @keyframes room-leaf {
           0%, 100% { transform: rotate(-1deg); }
           50% { transform: rotate(2deg); }
         }
 
-        @keyframes sparkle {
-          0%, 100% { opacity: 0.25; }
+        @keyframes room-sparkle {
+          0%, 100% { opacity: 0.28; }
           50% { opacity: 0.8; }
+        }
+
+        @keyframes room-light-twinkle {
+          0%, 100% { opacity: 0.42; }
+          50% { opacity: 1; }
         }
 
         @media (max-width: 760px) {
@@ -158,110 +158,174 @@ export default function NobuRoom({ character }: Props) {
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
-          <linearGradient id="wallGradient" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor={theme.wallTop} />
-            <stop offset="100%" stopColor={theme.wallBottom} />
+          <linearGradient id="desktopWall" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor={theme.wall} />
+            <stop offset="100%" stopColor={theme.wallShade} />
           </linearGradient>
-          <linearGradient id="skyGradient" x1="0" x2="0" y1="0" y2="1">
+          <linearGradient id="desktopSky" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor={theme.skyTop} />
-            <stop offset="58%" stopColor={theme.skyMid} />
             <stop offset="100%" stopColor={theme.skyBottom} />
           </linearGradient>
-          <radialGradient cx="50%" cy="50%" id="sunGlow" r="50%">
-            <stop offset="0%" stopColor="#fff4a8" stopOpacity="0.78" />
-            <stop offset="60%" stopColor="#ffd58a" stopOpacity="0.18" />
-            <stop offset="100%" stopColor="#ffd58a" stopOpacity="0" />
-          </radialGradient>
-          <radialGradient cx="50%" cy="50%" id="lampGlow" r="50%">
-            <stop offset="0%" stopColor="#ffd580" stopOpacity="0.72" />
-            <stop offset="58%" stopColor="#ffd580" stopOpacity="0.2" />
-            <stop offset="100%" stopColor="#ffd580" stopOpacity="0" />
+          <radialGradient id="desktopLampGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor={theme.lamp} stopOpacity="0.8" />
+            <stop offset="62%" stopColor={theme.lamp} stopOpacity="0.22" />
+            <stop offset="100%" stopColor={theme.lamp} stopOpacity="0" />
           </radialGradient>
         </defs>
 
-        <rect fill="url(#wallGradient)" height="900" width="1440" />
-        <path d="M0 610h1440v290H0z" fill={theme.floor} />
-        <path d="M0 610h1440" stroke="#7aa4b9" strokeOpacity="0.52" strokeWidth="5" />
-        <path d="M0 610h1440l-190 290H190z" fill="#f7fbff" opacity="0.7" />
-        <path d="M148 900l178-290M420 900l92-290M696 900l18-290M962 900l-58-290M1244 900l-126-290" stroke="#d5e4ef" strokeWidth="5" />
-        <path d="M0 746h1440M0 826h1440" stroke="#d5e4ef" strokeWidth="5" />
+        <rect fill="url(#desktopWall)" height="900" width="1440" />
+        <rect fill="#f8f2e8" height="254" width="1440" y="646" />
+        <path d="M0 646h1440" stroke="#d8cdbb" strokeWidth="5" />
+        <path d="M0 646h1440l-176 254H176z" fill="#fffaf0" opacity="0.64" />
+        <path d="M130 900l150-254M394 900l86-254M654 900l24-254M916 900l-46-254M1184 900l-110-254" stroke="#ddd0bd" strokeWidth="5" />
+        <path d="M0 750h1440M0 836h1440" stroke="#ddd0bd" strokeWidth="5" />
 
-        <g transform="translate(350 78)">
-          <rect fill="#ffffff" height="366" rx="14" stroke={theme.furniture} strokeOpacity="0.18" strokeWidth="5" width="740" />
-          <rect fill="url(#skyGradient)" height="314" rx="9" width="684" x="28" y="26" />
-          <ellipse className="sun-glow" cx="560" cy="96" fill="url(#sunGlow)" rx="260" ry="180" />
-          <circle cx="566" cy="96" fill="#fff4a8" r="38" />
-          <path d="M370 26v314M28 186h684" stroke="#fff8ef" strokeWidth="9" />
-          <path d="M66 292c88-82 174-98 254-47 68 44 140 36 230-32 58 48 98 92 120 127H28c8-18 21-34 38-48Z" fill="#6e9ead" opacity="0.55" />
-          <circle className="sparkle" cx="92" cy="86" fill="#ffffff" r="4" />
-          <circle className="sparkle" cx="178" cy="134" fill="#fff4a8" r="4" />
-          <circle className="sparkle" cx="278" cy="72" fill="#ffffff" r="3" />
-          <circle className="sparkle" cx="484" cy="128" fill="#fff4a8" r="4" />
+        <path d="M0 0h1440L1242 86H198z" fill="#ead5c7" opacity="0.48" />
+        <path d="M198 86h1044M198 86L0 0M1242 86l198-86" stroke="#8a6b5c" strokeOpacity="0.36" strokeWidth="4" />
+        <g transform="translate(618 22)">
+          <ellipse cx="102" cy="36" fill="#fff7ec" rx="54" ry="18" stroke="#8a6b5c" strokeOpacity="0.28" strokeWidth="3" />
+          <path d="M102 36L20 18M102 36l86-22M102 36l0-34" stroke="#8a6b5c" strokeOpacity="0.4" strokeLinecap="round" strokeWidth="5" />
+          <path d="M18 18c48 16 92 16 136 0" fill="none" stroke={theme.wood} strokeLinecap="round" strokeOpacity="0.62" strokeWidth="10" />
+          <path d="M186 14c-42 18-84 20-126 4" fill="none" stroke={theme.wood} strokeLinecap="round" strokeOpacity="0.62" strokeWidth="10" />
         </g>
 
-        <path className="curtain-left" d="M324 60h94c-32 128-26 274 22 446H296c40-164 48-312 28-446Z" fill={theme.curtain} />
-        <path className="curtain-right" d="M1026 60h94c-20 134-12 282 28 446h-144c48-172 54-318 22-446Z" fill={theme.curtain} />
+        <path d="M22 68c118 28 236 20 354-24 82-30 166-26 252 12" fill="none" stroke={theme.wood} strokeOpacity="0.58" strokeWidth="3" />
+        <circle className="fairy-light" cx="26" cy="70" fill={theme.lamp} r="5" />
+        <circle className="fairy-light" cx="86" cy="78" fill={theme.lamp} r="5" />
+        <circle className="fairy-light" cx="148" cy="76" fill={theme.lamp} r="5" />
+        <circle className="fairy-light" cx="214" cy="62" fill={theme.lamp} r="5" />
+        <circle className="fairy-light" cx="282" cy="44" fill={theme.lamp} r="5" />
+        <circle className="fairy-light" cx="354" cy="42" fill={theme.lamp} r="5" />
+        <circle className="fairy-light" cx="430" cy="48" fill={theme.lamp} r="5" />
+        <circle className="fairy-light" cx="548" cy="52" fill={theme.lamp} r="5" />
 
-        <g transform="translate(82 286)">
-          <rect fill={theme.shelfGlass} height="354" rx="12" stroke={theme.furniture} strokeOpacity="0.1" strokeWidth="4" width="230" />
-          <path d="M28 86h174M28 178h174M28 270h174" stroke="#b8d2df" strokeLinecap="round" strokeWidth="6" />
-          <rect fill="#ffd580" height="62" rx="4" width="22" x="44" y="22" />
-          <rect fill={theme.accent} height="54" rx="4" width="24" x="84" y="30" />
-          <rect fill="#17a389" height="76" rx="4" width="24" x="128" y="8" />
-          <rect fill={theme.furniture} height="62" rx="4" width="32" x="166" y="22" />
-          <rect fill="#99e3be" height="74" rx="4" width="25" x="48" y="104" />
-          <rect fill="#ffe49b" height="48" rx="4" width="29" x="96" y="130" />
-          <rect fill={theme.furniture} height="68" rx="4" width="24" x="156" y="110" />
-          <rect fill="#ffe3a4" height="78" rx="4" width="27" x="50" y="192" />
-          <rect fill={theme.accent} height="56" opacity="0.72" rx="4" width="30" x="104" y="214" />
-          <rect fill={theme.furniture} height="72" rx="4" width="24" x="168" y="198" />
-          <rect fill="#edf6ff" height="40" rx="8" width="72" x="128" y="296" />
-          <path d="M142 316h44" stroke="#8096a3" strokeLinecap="round" strokeWidth="5" />
+        <g transform="translate(42 134)">
+          <path d="M0 58h210" stroke={theme.wood} strokeLinecap="round" strokeWidth="12" />
+          <path d="M18 58l-16 44M194 58l18 44" stroke={theme.wood} strokeLinecap="round" strokeWidth="5" />
+          <rect fill="#fff9f1" height="62" rx="5" stroke="#8a6b5c" strokeOpacity="0.28" strokeWidth="3" width="54" x="28" y="-8" />
+          <rect fill={theme.accentSoft} height="70" rx="6" stroke="#8a6b5c" strokeOpacity="0.28" strokeWidth="3" width="48" x="94" y="-18" />
+          <rect fill={theme.dark} height="58" rx="5" stroke="#8a6b5c" strokeOpacity="0.28" strokeWidth="3" width="42" x="154" y="-6" />
+          <circle cx="54" cy="26" fill={theme.accent} r="9" />
+          <path d="M40 44c18-22 36-22 54 0" fill="none" stroke={theme.dark} strokeLinecap="round" strokeWidth="4" />
+          <path d="M110 8h14M110 26h20M166 18h18M166 36h14" stroke="#fff7ec" strokeLinecap="round" strokeWidth="4" />
         </g>
 
-        <g transform="translate(246 644)">
-          <rect fill={theme.wood} height="62" rx="10" width="492" x="0" y="116" />
-          <rect fill="#ffffff" height="78" rx="12" width="456" x="18" y="58" />
-          <rect fill={theme.blanket} height="92" opacity="0.92" rx="12" width="326" x="148" y="72" />
-          <rect fill={theme.pillow} height="48" rx="10" width="116" x="42" y="70" />
-          <path d="M36 178v64M456 178v64" stroke={theme.wood} strokeLinecap="round" strokeOpacity="0.48" strokeWidth="11" />
+        <g transform="translate(340 132)">
+          <path d="M0 64h216" stroke={theme.wood} strokeLinecap="round" strokeWidth="11" />
+          <path d="M18 64l-14 38M198 64l16 38" stroke={theme.wood} strokeLinecap="round" strokeWidth="5" />
+          <rect fill="#fff9f1" height="50" rx="4" width="30" x="28" y="10" />
+          <rect fill={theme.accentSoft} height="62" rx="4" width="32" x="66" y="-2" />
+          <rect fill={theme.dark} height="54" rx="4" width="34" x="106" y="6" />
+          <rect fill="#e0c496" height="46" rx="4" width="28" x="150" y="14" />
+          <path d="M48 26h92" stroke="#8a6b5c" strokeOpacity="0.24" strokeWidth="2" />
+          <path className="plant-leaf" d="M188 58c-16-26-8-46 18-58 6 24 0 42-18 58Z" fill={theme.plant} />
+          <path className="plant-leaf" d="M188 58c22-20 42-22 58-6-18 15-38 17-58 6Z" fill="#4b9b73" />
         </g>
 
-        <g transform="translate(844 472)">
-          <rect fill={theme.wood} height="48" rx="8" width="402" y="248" />
-          <path d="M42 248V92M356 248V92" stroke={theme.wood} strokeLinecap="round" strokeWidth="12" />
-          <rect fill="#ffffff" height="126" rx="12" stroke={theme.furniture} strokeOpacity="0.08" strokeWidth="4" width="206" x="54" y="46" />
-          <rect className="screen-glow" fill={theme.accent} height="88" opacity="0.56" rx="7" width="166" x="74" y="66" />
-          <path d="M104 104h92M104 130h54" stroke="#fff8d6" strokeLinecap="round" strokeOpacity="0.92" strokeWidth="6" />
-          <rect fill={theme.furniture} height="14" rx="5" width="88" x="112" y="172" />
-          <path d="M300 248l42-144 44 144" fill="none" stroke={theme.wood} strokeLinecap="round" strokeOpacity="0.78" strokeWidth="9" />
-          <path d="M286 110h116l-24-56h-68z" fill="#ffd580" />
-          <ellipse className="lamp-glow" cx="344" cy="174" fill="url(#lampGlow)" rx="246" ry="174" />
+        <g transform="translate(52 250)">
+          <rect fill="#fff7ef" height="142" rx="6" stroke="#8a6b5c" strokeOpacity="0.26" strokeWidth="3" width="86" />
+          <rect fill="#d7ebf7" height="142" rx="6" stroke="#8a6b5c" strokeOpacity="0.26" strokeWidth="3" width="86" x="104" y="-16" />
+          <rect fill={theme.accentSoft} height="88" rx="5" stroke="#8a6b5c" strokeOpacity="0.24" strokeWidth="3" width="70" x="202" y="34" />
+          <path d="M20 108c18-26 38-32 62-18" fill="none" stroke={theme.accent} strokeLinecap="round" strokeWidth="5" />
+          <circle cx="44" cy="48" fill={theme.dark} opacity="0.82" r="18" />
+          <circle cx="148" cy="40" fill={theme.lamp} r="18" />
+          <path d="M128 110c24-34 48-34 72 0" fill="none" stroke={theme.dark} strokeLinecap="round" strokeWidth="6" />
+          <path d="M218 72h40M218 94h28" stroke="#fff7ec" strokeLinecap="round" strokeWidth="5" />
         </g>
 
-        <g transform="translate(1062 664)">
-          <path d="M46 72h132c20 0 36 16 36 36v34H22v-44c0-14 10-26 24-26Z" fill={theme.furniture} />
-          <path d="M68 72V22c0-12 9-22 22-22h76c13 0 22 10 22 22v50" fill="none" stroke="#ffd580" strokeOpacity="0.8" strokeWidth="10" />
-          <rect fill={theme.accent} height="36" opacity="0.38" rx="7" width="168" x="34" y="106" />
-          <path d="M56 142l-26 86M178 142l28 86" stroke="#ffd580" strokeLinecap="round" strokeOpacity="0.72" strokeWidth="8" />
+        <g transform="translate(418 86)">
+          <rect fill={theme.trim} height="360" rx="22" stroke="#cdbfb7" strokeOpacity="0.32" strokeWidth="6" width="604" />
+          <rect fill="url(#desktopSky)" height="306" rx="16" width="546" x="29" y="27" />
+          <circle className="sun" cx="448" cy="98" fill="#fff0a6" r="46" />
+          <path d="M302 27v306M29 192h546" stroke="#fff7ec" strokeWidth="9" />
+          <path d="M38 284c82-78 164-90 246-36 70 46 136 34 214-42 42 38 68 78 80 127H29c2-18 5-34 9-49Z" fill={theme.mountain} opacity="0.62" />
+          <circle className="sparkle" cx="96" cy="84" fill="#fff7d6" r="5" />
+          <circle className="sparkle" cx="192" cy="122" fill="#ffffff" r="4" />
+          <circle className="sparkle" cx="362" cy="80" fill="#ffffff" r="4" />
         </g>
 
-        <g transform="translate(170 700)">
-          <rect fill={theme.furniture} height="126" rx="8" width="112" x="26" y="84" />
-          <path className="plant-leaf" d="M82 88C38 58 38 20 76 0c14 34 15 64 6 88Z" fill="#1d9b83" opacity="0.76" />
-          <path className="plant-leaf" d="M84 90c43-28 52-68 18-90-18 32-24 64-18 90Z" fill="#ffd580" opacity="0.68" />
-          <path className="plant-leaf" d="M84 96C32 104 4 78 4 38c38 8 64 28 80 58Z" fill={theme.furniture} />
-          <path className="plant-leaf" d="M84 96c54 4 82-24 78-66-38 12-64 34-78 66Z" fill="#2fae99" />
+        <path className="curtain" d="M374 58h82c-24 122-20 258 14 410H336c36-154 48-292 38-410Z" fill={theme.accentSoft} />
+        <path className="curtain" d="M984 58h82c-10 118 2 256 38 410H970c34-152 38-288 14-410Z" fill={theme.accentSoft} />
+
+        <g transform="translate(90 278)">
+          <rect fill="#fffdfa" height="364" rx="20" stroke="#dccfc4" strokeOpacity="0.46" strokeWidth="4" width="246" />
+          <path d="M32 92h182M32 188h182M32 282h182" stroke="#d8cdbb" strokeLinecap="round" strokeWidth="7" />
+          <rect fill={theme.lamp} height="72" rx="5" width="24" x="48" y="18" />
+          <rect fill={theme.accent} height="54" rx="5" width="26" x="92" y="36" />
+          <rect fill="#0f8a78" height="80" rx="5" width="28" x="138" y="10" />
+          <rect fill={theme.dark} height="62" rx="5" width="34" x="178" y="28" />
+          <rect fill="#a4dab8" height="78" rx="5" width="28" x="50" y="108" />
+          <rect fill="#ffe2a2" height="56" rx="5" width="31" x="98" y="130" />
+          <rect fill={theme.dark} height="74" rx="5" width="27" x="162" y="112" />
+          <rect fill="#ffe8b0" height="82" rx="5" width="30" x="50" y="198" />
+          <rect fill={theme.accent} height="58" opacity="0.82" rx="5" width="34" x="104" y="222" />
+          <rect fill={theme.dark} height="76" rx="5" width="28" x="170" y="204" />
+          <rect fill="#f3eee7" height="42" rx="9" width="78" x="132" y="306" />
+          <path d="M148 326h44" stroke={theme.wood} strokeLinecap="round" strokeWidth="6" />
         </g>
 
-        <g transform="translate(520 238)">
-          <rect fill="#ffffff" height="122" rx="14" stroke={theme.furniture} strokeOpacity="0.1" strokeWidth="4" width="160" />
-          <circle cx="48" cy="42" fill="#ffd580" r="20" />
-          <path d="M30 92c36-42 72-42 108 0" fill="none" stroke="#7c5ea8" strokeLinecap="round" strokeWidth="10" />
-          <path d="M104 40h30M104 64h22" stroke={theme.accent} strokeLinecap="round" strokeWidth="7" />
+        <g transform="translate(222 624)">
+          <ellipse cx="286" cy="194" fill={theme.rug} opacity="0.54" rx="294" ry="58" />
+          <rect fill={theme.wood} height="68" rx="13" width="548" x="0" y="128" />
+          <rect fill="#fffefa" height="88" rx="16" width="508" x="20" y="70" />
+          <rect fill={theme.blanket} height="98" opacity="0.95" rx="15" width="356" x="172" y="86" />
+          <rect fill={theme.lamp} height="52" rx="13" width="132" x="42" y="84" />
+          <path d="M48 196v72M508 196v72" stroke={theme.wood} strokeLinecap="round" strokeOpacity="0.52" strokeWidth="12" />
         </g>
 
-        <path d="M0 802c196-34 386-28 570 18 244 62 482 58 714-18 56-18 108-30 156-35v133H0z" fill={theme.furniture} opacity="0.12" />
+        <g transform="translate(874 490)">
+          <rect fill={theme.wood} height="54" rx="10" width="412" y="242" />
+          <path d="M46 242V84M360 242V84" stroke={theme.wood} strokeLinecap="round" strokeWidth="13" />
+          <rect fill="#fffdfa" height="132" rx="16" stroke="#d8cdbb" strokeOpacity="0.5" strokeWidth="4" width="208" x="50" y="36" />
+          <rect fill="#cfe6ef" height="84" rx="8" width="166" x="70" y="58" />
+          <path d="M96 100h94M96 124h56" stroke={theme.accent} strokeLinecap="round" strokeWidth="7" />
+          <rect fill={theme.dark} height="15" rx="5" width="90" x="110" y="168" />
+          <path d="M308 242l44-144 44 144" fill="none" stroke={theme.woodLight} strokeLinecap="round" strokeWidth="10" />
+          <path d="M294 106h116l-24-56h-68z" fill={theme.lamp} />
+          <ellipse className="lamp-glow" cx="352" cy="170" fill="url(#desktopLampGlow)" rx="250" ry="180" />
+          <rect fill={theme.accentSoft} height="28" opacity="0.72" rx="6" width="86" x="266" y="210" />
+          <rect fill="#fff7ec" height="14" rx="4" width="62" x="278" y="218" />
+          <path d="M164 22h28M200 20h18M232 24h26" stroke={theme.wood} strokeLinecap="round" strokeWidth="6" />
+          <circle cx="282" cy="30" fill="#67a876" r="12" />
+          <path d="M282 18c-10-20 0-36 22-44 4 20-4 34-22 44Z" fill="#4b9b73" />
+        </g>
+
+        <g transform="translate(1182 120)">
+          <path d="M0 58h226" stroke={theme.wood} strokeLinecap="round" strokeWidth="12" />
+          <path d="M20 58l-18 48M206 58l18 48" stroke={theme.wood} strokeLinecap="round" strokeWidth="5" />
+          <rect fill="#fff7ec" height="46" rx="6" stroke="#8a6b5c" strokeOpacity="0.24" strokeWidth="3" width="36" x="18" y="8" />
+          <rect fill="#fff7ec" height="56" rx="7" stroke="#8a6b5c" strokeOpacity="0.24" strokeWidth="3" width="42" x="64" y="-2" />
+          <rect fill="#d5c1a6" height="50" rx="6" stroke="#8a6b5c" strokeOpacity="0.24" strokeWidth="3" width="36" x="116" y="4" />
+          <rect fill="#fff7ec" height="60" rx="7" stroke="#8a6b5c" strokeOpacity="0.24" strokeWidth="3" width="42" x="166" y="-6" />
+          <path d="M24 30h24M72 22h26M122 28h24M174 20h28" stroke={theme.wood} strokeOpacity="0.55" strokeLinecap="round" strokeWidth="3" />
+        </g>
+
+        <g transform="translate(1198 238)">
+          <rect fill="#fffdfa" height="350" rx="16" stroke="#dccfc4" strokeOpacity="0.46" strokeWidth="4" width="214" />
+          <path d="M0 128h214" stroke={theme.wood} strokeWidth="7" />
+          <rect fill="#e8d6c7" height="90" rx="12" width="178" x="18" y="28" />
+          <ellipse cx="68" cy="74" fill="none" rx="26" ry="18" stroke={theme.wood} strokeWidth="5" />
+          <ellipse cx="116" cy="74" fill="none" rx="26" ry="18" stroke={theme.wood} strokeWidth="5" />
+          <path d="M44 176h120M44 212h96M44 248h132" stroke={theme.wood} strokeLinecap="round" strokeWidth="7" />
+          <path d="M170 164c20 26 18 54-8 84" fill="none" stroke={theme.dark} strokeLinecap="round" strokeWidth="6" />
+          <rect fill={theme.lamp} height="74" opacity="0.8" rx="8" width="42" x="122" y="264" />
+          <rect fill={theme.dark} height="58" rx="8" width="46" x="22" y="280" />
+        </g>
+
+        <g transform="translate(1058 646)">
+          <path d="M48 78h144c21 0 38 17 38 38v40H22v-50c0-16 11-28 26-28Z" fill={theme.dark} />
+          <path d="M72 78V26c0-13 10-24 24-24h82c14 0 24 11 24 24v52" fill="none" stroke={theme.lamp} strokeOpacity="0.82" strokeWidth="10" />
+          <rect fill={theme.accent} height="38" opacity="0.34" rx="8" width="178" x="38" y="118" />
+          <path d="M60 156l-28 92M190 156l30 92" stroke={theme.lamp} strokeLinecap="round" strokeOpacity="0.75" strokeWidth="8" />
+        </g>
+
+        <g transform="translate(184 706)">
+          <rect fill={theme.dark} height="138" rx="12" width="118" x="30" y="88" />
+          <path className="plant-leaf" d="M90 92C44 60 42 18 82 0c14 34 17 66 8 92Z" fill="#5d9f98" />
+          <path className="plant-leaf" d="M92 94c46-30 56-72 18-94-18 34-24 66-18 94Z" fill={theme.lamp} opacity="0.8" />
+          <path className="plant-leaf" d="M92 102C36 112 6 82 8 40c40 9 68 30 84 62Z" fill={theme.plant} />
+          <path className="plant-leaf" d="M92 102c58 4 88-26 84-70-42 13-70 36-84 70Z" fill="#2b8a76" />
+        </g>
       </svg>
 
       <svg
@@ -272,79 +336,103 @@ export default function NobuRoom({ character }: Props) {
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
-          <linearGradient id="mobileWallGradient" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor={theme.wallTop} />
-            <stop offset="100%" stopColor={theme.wallBottom} />
+          <linearGradient id="mobileWall" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor={theme.wall} />
+            <stop offset="100%" stopColor={theme.wallShade} />
           </linearGradient>
-          <linearGradient id="mobileSkyGradient" x1="0" x2="0" y1="0" y2="1">
+          <linearGradient id="mobileSky" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor={theme.skyTop} />
-            <stop offset="58%" stopColor={theme.skyMid} />
             <stop offset="100%" stopColor={theme.skyBottom} />
           </linearGradient>
-          <radialGradient cx="50%" cy="50%" id="mobileLampGlow" r="50%">
-            <stop offset="0%" stopColor="#ffd580" stopOpacity="0.68" />
-            <stop offset="55%" stopColor="#ffd580" stopOpacity="0.18" />
-            <stop offset="100%" stopColor="#ffd580" stopOpacity="0" />
+          <radialGradient id="mobileLampGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor={theme.lamp} stopOpacity="0.78" />
+            <stop offset="62%" stopColor={theme.lamp} stopOpacity="0.2" />
+            <stop offset="100%" stopColor={theme.lamp} stopOpacity="0" />
           </radialGradient>
         </defs>
 
-        <rect fill="url(#mobileWallGradient)" height="932" width="430" />
-        <path d="M0 595h430v337H0z" fill={theme.floor} />
-        <path d="M0 595h430" stroke="#7aa4b9" strokeOpacity="0.46" strokeWidth="4" />
-        <path d="M0 595h430l-58 337H58z" fill="#f7fbff" opacity="0.68" />
-        <path d="M50 932l64-337M164 932l26-337M270 932l-18-337M382 932l-68-337" stroke="#d5e4ef" strokeWidth="4" />
-        <path d="M0 710h430M0 820h430" stroke="#d5e4ef" strokeWidth="4" />
+        <rect fill="url(#mobileWall)" height="932" width="430" />
+        <rect fill="#f8f2e8" height="312" width="430" y="620" />
+        <path d="M0 620h430" stroke="#d8cdbb" strokeWidth="4" />
+        <path d="M0 620h430l-62 312H62z" fill="#fffaf0" opacity="0.66" />
+        <path d="M48 932l62-312M162 932l26-312M270 932l-16-312M382 932l-70-312" stroke="#ddd0bd" strokeWidth="4" />
+        <path d="M0 734h430M0 838h430" stroke="#ddd0bd" strokeWidth="4" />
 
-        <g transform="translate(38 118)">
-          <rect fill="#ffffff" height="248" rx="12" stroke={theme.furniture} strokeOpacity="0.16" strokeWidth="4" width="354" />
-          <rect fill="url(#mobileSkyGradient)" height="210" rx="8" width="322" x="16" y="18" />
-          <circle cx="270" cy="66" fill="#fff4a8" r="32" />
-          <path d="M177 18v210M16 126h322" stroke="#fff8ef" strokeWidth="7" />
-          <path d="M34 198c46-42 92-50 134-24 38 24 78 20 126-18 26 24 42 48 50 72H16c4-12 10-22 18-30Z" fill="#6e9ead" opacity="0.55" />
-          <circle className="sparkle" cx="56" cy="60" fill="#ffffff" r="3" />
-          <circle className="sparkle" cx="118" cy="94" fill="#fff4a8" r="3" />
-          <circle className="sparkle" cx="230" cy="84" fill="#ffffff" r="3" />
+        <g transform="translate(42 126)">
+          <rect fill={theme.trim} height="242" rx="18" stroke="#cdbfb7" strokeOpacity="0.34" strokeWidth="4" width="346" />
+          <rect fill="url(#mobileSky)" height="204" rx="14" width="310" x="18" y="18" />
+          <circle className="sun" cx="262" cy="66" fill="#fff0a6" r="34" />
+          <path d="M173 18v204M18 128h310" stroke="#fff7ec" strokeWidth="7" />
+          <path d="M30 196c48-46 96-54 144-24 40 26 82 18 132-30 24 25 34 50 38 80H18c2-10 6-18 12-26Z" fill={theme.mountain} opacity="0.62" />
+          <circle className="sparkle" cx="62" cy="64" fill="#fff7d6" r="4" />
+          <circle className="sparkle" cx="124" cy="94" fill="#ffffff" r="3" />
+          <circle className="sparkle" cx="224" cy="76" fill="#ffffff" r="3" />
         </g>
 
-        <path className="curtain-left" d="M18 96h68c-22 92-18 198 16 322H0c28-118 34-224 18-322Z" fill={theme.curtain} />
-        <path className="curtain-right" d="M344 96h68c-16 98-10 204 18 322H328c34-124 38-230 16-322Z" fill={theme.curtain} />
+        <path d="M12 78c74 20 148 14 222-18 42-18 90-14 144 10" fill="none" stroke={theme.wood} strokeOpacity="0.52" strokeWidth="2.5" />
+        <circle className="fairy-light" cx="16" cy="80" fill={theme.lamp} r="4" />
+        <circle className="fairy-light" cx="58" cy="86" fill={theme.lamp} r="4" />
+        <circle className="fairy-light" cx="104" cy="78" fill={theme.lamp} r="4" />
+        <circle className="fairy-light" cx="154" cy="62" fill={theme.lamp} r="4" />
+        <circle className="fairy-light" cx="206" cy="58" fill={theme.lamp} r="4" />
+        <circle className="fairy-light" cx="274" cy="62" fill={theme.lamp} r="4" />
 
-        <g transform="translate(20 414)">
-          <rect fill={theme.shelfGlass} height="162" rx="10" stroke={theme.furniture} strokeOpacity="0.1" strokeWidth="3" width="96" />
-          <path d="M14 48h68M14 96h68" stroke="#b8d2df" strokeLinecap="round" strokeWidth="4" />
-          <rect fill={theme.accent} height="34" rx="3" width="12" x="26" y="12" />
-          <rect fill="#17a389" height="42" rx="3" width="12" x="44" y="4" />
-          <rect fill={theme.furniture} height="34" rx="3" width="16" x="62" y="12" />
-          <rect fill="#ffd580" height="40" rx="3" width="13" x="24" y="54" />
-          <rect fill={theme.accent} height="34" opacity="0.72" rx="3" width="14" x="50" y="60" />
-          <rect fill={theme.furniture} height="42" rx="3" width="14" x="68" y="52" />
+        <g transform="translate(18 250)">
+          <rect fill="#fff7ef" height="82" rx="5" stroke="#8a6b5c" strokeOpacity="0.24" strokeWidth="2" width="48" />
+          <rect fill="#d7ebf7" height="86" rx="5" stroke="#8a6b5c" strokeOpacity="0.24" strokeWidth="2" width="52" x="58" y="-8" />
+          <rect fill={theme.accentSoft} height="54" rx="5" stroke="#8a6b5c" strokeOpacity="0.24" strokeWidth="2" width="42" x="120" y="22" />
+          <circle cx="24" cy="30" fill={theme.dark} opacity="0.82" r="10" />
+          <circle cx="82" cy="26" fill={theme.lamp} r="10" />
+          <path d="M72 62c14-16 28-16 42 0" fill="none" stroke={theme.dark} strokeLinecap="round" strokeWidth="4" />
+          <path d="M130 44h22M130 58h14" stroke="#fff7ec" strokeLinecap="round" strokeWidth="3" />
         </g>
 
-        <g transform="translate(46 672)">
-          <rect fill={theme.wood} height="42" rx="8" width="224" x="0" y="82" />
-          <rect fill="#ffffff" height="54" rx="10" width="206" x="10" y="38" />
-          <rect fill={theme.blanket} height="70" opacity="0.92" rx="10" width="146" x="70" y="52" />
-          <rect fill={theme.pillow} height="36" rx="8" width="58" x="22" y="48" />
+        <path className="curtain" d="M20 98h64c-20 92-16 198 16 318H0c27-118 33-224 20-318Z" fill={theme.accentSoft} />
+        <path className="curtain" d="M346 98h64c-13 94-7 200 20 318H330c32-120 36-226 16-318Z" fill={theme.accentSoft} />
+
+        <g transform="translate(20 426)">
+          <rect fill="#fffdfa" height="168" rx="14" stroke="#dccfc4" strokeOpacity="0.48" strokeWidth="3" width="104" />
+          <path d="M16 52h72M16 100h72" stroke="#d8cdbb" strokeLinecap="round" strokeWidth="4" />
+          <rect fill={theme.accent} height="36" rx="3" width="13" x="28" y="14" />
+          <rect fill="#0f8a78" height="44" rx="3" width="13" x="48" y="6" />
+          <rect fill={theme.dark} height="36" rx="3" width="16" x="68" y="14" />
+          <rect fill={theme.lamp} height="42" rx="3" width="13" x="26" y="56" />
+          <rect fill={theme.accent} height="34" opacity="0.82" rx="3" width="15" x="52" y="64" />
+          <rect fill={theme.dark} height="42" rx="3" width="14" x="72" y="56" />
         </g>
 
-        <g transform="translate(230 468)">
-          <rect fill={theme.wood} height="36" rx="7" width="168" y="174" />
-          <path d="M22 174V70M146 174V70" stroke={theme.wood} strokeLinecap="round" strokeWidth="9" />
-          <rect fill="#ffffff" height="92" rx="10" stroke={theme.furniture} strokeOpacity="0.08" strokeWidth="3" width="118" x="20" y="30" />
-          <rect className="screen-glow" fill={theme.accent} height="62" opacity="0.56" rx="6" width="92" x="33" y="44" />
-          <path d="M50 72h54M50 90h34" stroke="#fff8d6" strokeLinecap="round" strokeOpacity="0.9" strokeWidth="4" />
-          <path d="M128 174l18-92 20 92" fill="none" stroke={theme.wood} strokeLinecap="round" strokeOpacity="0.78" strokeWidth="7" />
-          <path d="M116 86h58l-14-34h-30z" fill="#ffd580" />
-          <ellipse className="lamp-glow" cx="146" cy="126" fill="url(#mobileLampGlow)" rx="116" ry="90" />
+        <g transform="translate(52 672)">
+          <ellipse cx="130" cy="154" fill={theme.rug} opacity="0.54" rx="164" ry="42" />
+          <rect fill={theme.wood} height="44" rx="10" width="230" x="0" y="82" />
+          <rect fill="#fffefa" height="58" rx="12" width="212" x="9" y="42" />
+          <rect fill={theme.blanket} height="72" opacity="0.95" rx="10" width="150" x="71" y="54" />
+          <rect fill={theme.lamp} height="36" rx="8" width="62" x="22" y="52" />
         </g>
 
-        <g transform="translate(318 686)">
-          <path d="M20 40h68c12 0 22 10 22 22v24H8V52c0-7 5-12 12-12Z" fill={theme.furniture} />
-          <path d="M34 40V14c0-7 5-12 12-12h34c7 0 12 5 12 12v26" fill="none" stroke="#ffd580" strokeOpacity="0.8" strokeWidth="7" />
-          <rect fill={theme.accent} height="22" opacity="0.38" rx="5" width="84" x="18" y="64" />
+        <g transform="translate(238 472)">
+          <rect fill={theme.wood} height="38" rx="8" width="164" y="168" />
+          <path d="M24 168V68M140 168V68" stroke={theme.wood} strokeLinecap="round" strokeWidth="9" />
+          <rect fill="#fffdfa" height="90" rx="12" stroke="#d8cdbb" strokeOpacity="0.5" strokeWidth="3" width="112" x="22" y="28" />
+          <rect fill="#cfe6ef" height="58" rx="6" width="86" x="35" y="44" />
+          <path d="M51 72h50M51 88h32" stroke={theme.accent} strokeLinecap="round" strokeWidth="4" />
+          <path d="M122 168l20-88 20 88" fill="none" stroke={theme.woodLight} strokeLinecap="round" strokeWidth="7" />
+          <path d="M112 84h58l-14-34h-30z" fill={theme.lamp} />
+          <ellipse className="lamp-glow" cx="142" cy="124" fill="url(#mobileLampGlow)" rx="116" ry="92" />
         </g>
 
-        <path d="M0 826c92-16 178-12 258 12 76 22 134 24 172 10v84H0z" fill={theme.furniture} opacity="0.12" />
+        <g transform="translate(316 686)">
+          <path d="M20 42h72c12 0 22 10 22 22v26H8V54c0-7 5-12 12-12Z" fill={theme.dark} />
+          <path d="M34 42V14c0-7 5-12 12-12h38c7 0 12 5 12 12v28" fill="none" stroke={theme.lamp} strokeOpacity="0.82" strokeWidth="7" />
+          <rect fill={theme.accent} height="22" opacity="0.34" rx="5" width="86" x="18" y="68" />
+        </g>
+
+        <g transform="translate(20 742)">
+          <rect fill={theme.dark} height="116" rx="10" width="82" x="22" y="74" />
+          <path className="plant-leaf" d="M64 78C32 54 30 18 60 0c10 30 13 56 4 78Z" fill="#5d9f98" />
+          <path className="plant-leaf" d="M66 80c34-24 42-58 14-78-14 28-19 54-14 78Z" fill={theme.lamp} opacity="0.8" />
+          <path className="plant-leaf" d="M66 88C24 94 4 70 6 38c30 7 50 24 60 50Z" fill={theme.plant} />
+          <path className="plant-leaf" d="M66 88c42 4 64-20 62-54-30 10-52 28-62 54Z" fill="#2b8a76" />
+        </g>
       </svg>
     </section>
   )

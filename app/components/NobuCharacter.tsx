@@ -144,12 +144,18 @@ function resizeApp(app: PixiApp, host: HTMLElement) {
   app.renderer.resize(Math.max(1, Math.floor(rect.width)), Math.max(1, Math.floor(rect.height)))
 }
 
+function waitForNextFrame() {
+  return new Promise<void>((resolve) => {
+    requestAnimationFrame(() => resolve())
+  })
+}
+
 function placeModel(model: Live2DModelInstance, app: PixiApp) {
   const smallScreen = isSmallScreen()
   const screenWidth = app.screen.width
   const screenHeight = app.screen.height
-  const targetHeight = screenHeight * (smallScreen ? 0.78 : 0.82)
-  const targetWidth = screenWidth * (smallScreen ? 0.88 : 0.48)
+  const targetHeight = screenHeight * (smallScreen ? 0.78 : 0.76)
+  const targetWidth = screenWidth * (smallScreen ? 0.88 : 0.38)
 
   model.anchor?.set(0.5, 1)
   model.rotation = 0
@@ -157,11 +163,12 @@ function placeModel(model: Live2DModelInstance, app: PixiApp) {
 
   const rawWidth = Math.max(1, model.width)
   const rawHeight = Math.max(1, model.height)
-  const scale = Math.min(targetHeight / rawHeight, targetWidth / rawWidth)
+  const computedScale = Math.min(targetHeight / rawHeight, targetWidth / rawWidth)
+  const scale = Math.max(0.03, Math.min(computedScale, smallScreen ? 0.78 : 0.56))
 
   model.scale.set(scale)
   model.x = screenWidth / 2
-  model.y = screenHeight * (smallScreen ? 0.94 : 0.96)
+  model.y = screenHeight * (smallScreen ? 0.94 : 0.98)
 }
 
 function applyToggles(model: Live2DModelInstance | null, toggles: Record<string, boolean>) {
@@ -250,6 +257,8 @@ export default function NobuCharacter({
         modelRef.current = model
         app.stage.addChild(model)
         resizeApp(app, host)
+        await waitForNextFrame()
+        if (cancelled) return
         placeModel(model, app)
         applyToggles(model, togglesRef.current)
 
