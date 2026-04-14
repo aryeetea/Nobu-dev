@@ -451,7 +451,8 @@ export default function NobuCharacter({
         host.replaceChildren(app.view)
 
         const model = await Live2DModel.from(live2dModels[character].path, {
-          autoInteract: false,
+          autoFocus: false,
+          autoHitTest: false,
           motionPreload: 'NONE',
         })
 
