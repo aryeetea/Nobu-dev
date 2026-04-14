@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next'
-import AppInstallPrompt from './components/AppInstallPrompt'
 import ProvidersWrapper from './providers-wrapper'
 import PWARegister from './pwa-register'
 import './globals.css'
@@ -7,7 +6,7 @@ import { ReactNode } from 'react'
 
 export const metadata: Metadata = {
   title: 'Nobu',
-  description: 'Your personal voice AI assistant for memory, planning, style, and everyday decisions.',
+  description: 'A personal mobile voice assistant for memory, planning, style, and everyday decisions.',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
@@ -25,7 +24,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#7c3aed',
+  themeColor: '#eaf6ff',
   viewportFit: 'cover',
 }
 
@@ -36,7 +35,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <PWARegister />
         <ProvidersWrapper>
           {children}
-          <AppInstallPrompt />
         </ProvidersWrapper>
       </body>
     </html>

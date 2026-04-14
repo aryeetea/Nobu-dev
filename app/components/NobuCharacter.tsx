@@ -42,6 +42,7 @@ const MODEL_PATHS: Record<Character, string> = {
 
 const OML2D_SCRIPT_ID = 'nobu-oml2d-runtime'
 const OML2D_SCRIPT_SRC = '/vendor/oh-my-live2d.min.js'
+const OML2D_ELEMENT_IDS = ['oml2d-stage', 'oml2d-statusBar', 'oml2d-tips', 'oml2d-menus']
 
 const CHARACTER_COPY: Record<Character, string> = {
   female: 'Female Nobu',
@@ -95,6 +96,19 @@ function applyRoomPose(instance: Oml2dInstance, action: NobuRoomAction) {
   instance.setModelPosition(pose.position)
   instance.setModelRotation(pose.rotation)
   instance.setModelScale(pose.scale)
+}
+
+function removeOml2dElements() {
+  for (const id of OML2D_ELEMENT_IDS) {
+    document.getElementById(id)?.remove()
+  }
+}
+
+function moveOml2dStage(host: HTMLElement) {
+  const stage = document.getElementById('oml2d-stage')
+  if (stage && stage.parentElement !== host) {
+    host.appendChild(stage)
+  }
 }
 
 function loadOml2dRuntime() {
@@ -163,6 +177,7 @@ export default function NobuCharacter({
     async function loadCharacter() {
       setLoadStatus('loading')
       setErrorMessage('')
+      removeOml2dElements()
       host.replaceChildren()
 
       try {
@@ -177,7 +192,6 @@ export default function NobuCharacter({
           : 'calc(50% - min(54vw, 560px) / 2)'
 
         const instance = loadOml2d({
-          parentElement: hostRef.current,
           mobileDisplay: true,
           primaryColor: '#0f766e',
           sayHello: false,
@@ -255,9 +269,13 @@ export default function NobuCharacter({
           ],
         }) as Oml2dInstance
 
+        moveOml2dStage(hostRef.current)
         instanceRef.current = instance
         instance.onLoad((status) => {
           if (cancelled) return
+          if (hostRef.current) {
+            moveOml2dStage(hostRef.current)
+          }
           setLoadStatus(status)
           if (status === 'fail') {
             setErrorMessage(`${CHARACTER_COPY[character]} could not load.`)
@@ -289,6 +307,7 @@ export default function NobuCharacter({
       instanceRef.current?.stopTipsIdle()
       instanceRef.current?.statusBarClearEvents()
       instanceRef.current = null
+      removeOml2dElements()
       host.replaceChildren()
     }
   }, [character, shouldLoad])

@@ -4,13 +4,13 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Nobu',
     short_name: 'Nobu',
-    description: 'Your personal voice AI assistant for memory, planning, style, and everyday decisions.',
+    description: 'A personal mobile voice assistant for memory, planning, style, and everyday decisions.',
     start_url: '/',
     scope: '/',
     display: 'standalone',
     display_override: ['standalone', 'fullscreen'],
-    background_color: '#000000',
-    theme_color: '#7c3aed',
+    background_color: '#eaf6ff',
+    theme_color: '#eaf6ff',
     orientation: 'portrait',
     icons: [
       {

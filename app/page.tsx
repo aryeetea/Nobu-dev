@@ -12,7 +12,7 @@ import {
   type NobuSettings,
 } from './lib/nobu-settings'
 import { useSession } from 'next-auth/react'
-import NobuCharacter, { type NobuRoomAction } from './components/NobuCharacter'
+import NobuCharacter from './components/NobuCharacter'
 import NobuRoom from './components/NobuRoom'
 
 const AGENT_ID = 'agent_0301knzm0v3efm3th0qnb84gkqrg'
@@ -109,7 +109,6 @@ export default function Home() {
   const wakeStartingRef = useRef(false)
   const [settings, setSettings] = useState<NobuSettings>(DEFAULT_NOBU_SETTINGS)
   const [character, setCharacter] = useState<'female' | 'male'>('female')
-  const [roomAction, setRoomAction] = useState<NobuRoomAction>('center')
   const [introVisible, setIntroVisible] = useState(true)
   const [introExiting, setIntroExiting] = useState(false)
   const [wakeListenStatus, setWakeListenStatus] = useState<WakeListenStatus>('idle')
@@ -325,7 +324,8 @@ export default function Home() {
     <>
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: #000; font-family: sans-serif; overflow: hidden; }
+        html, body { background: #000; min-height: 100%; overflow: hidden; }
+        body { font-family: sans-serif; }
         .intro { position: fixed; inset: 0; z-index: 100; width: 100%; height: 100vh; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; transition: opacity 0.7s ease; }
         .intro.exiting { opacity: 0; pointer-events: none; }
         .intro-word { position: absolute; max-width: calc(100vw - 40px); text-align: center; font-size: 64px; font-weight: 600; letter-spacing: 0; line-height: 1.05; opacity: 0; pointer-events: none; transform: translateY(10px); }
@@ -333,16 +333,13 @@ export default function Home() {
         .intro-rest.teal { color: #0f766e; }
         .intro-rest.green { color: #059669; }
         .intro-rest.pink { color: #db2777; }
-        .nobu-stage { width: 100%; min-height: 100vh; background: #e7f0ec; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; }
-        .character-stage { width: 100vw; height: 90vh; display: flex; align-items: center; justify-content: center; pointer-events: none; position: relative; z-index: 2; }
-        .status { display: flex; align-items: center; gap: 7px; margin-top: 14px; position: relative; z-index: 5; }
+        .nobu-stage { width: 100%; min-height: 100dvh; background: #eaf6ff; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+        .character-stage { width: 100vw; height: 100dvh; display: flex; align-items: center; justify-content: center; pointer-events: none; position: relative; z-index: 2; }
+        .status { bottom: calc(18px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 7px; left: 50%; position: fixed; transform: translateX(-50%); z-index: 5; }
         .s-dot { width: 7px; height: 7px; border-radius: 50%; background: #34d399; animation: blink 2s infinite; }
-        .s-text { font-size: 13px; font-weight: 700; color: rgba(21,45,43,0.7); }
-        .capability-strip { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: min(680px, calc(100vw - 32px)); position: relative; z-index: 5; }
-        .capability-pill { border: 1px solid rgba(15,118,110,0.18); border-radius: 999px; background: rgba(255,255,255,0.62); color: rgba(21,45,43,0.68); font-size: 11px; font-weight: 700; padding: 7px 10px; text-decoration: none; backdrop-filter: blur(8px); }
-        .capability-pill[href]:hover { border-color: rgba(var(--nobu-rgb),0.45); color: #fff; }
-        .wake-indicator { position: fixed; top: 18px; left: 18px; z-index: 10; display: flex; align-items: center; gap: 8px; border: 1px solid rgba(15,118,110,0.18); border-radius: 999px; background: rgba(255,255,255,0.68); color: rgba(21,45,43,0.66); padding: 7px 10px; font-size: 11px; font-weight: 700; backdrop-filter: blur(10px); }
-        .settings-link { position: fixed; top: 18px; right: 18px; z-index: 10; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: 1px solid rgba(15,118,110,0.18); border-radius: 999px; background: rgba(255,255,255,0.68); color: rgba(21,45,43,0.7); text-decoration: none; backdrop-filter: blur(10px); }
+        .s-text { font-size: 13px; font-weight: 800; color: rgba(43,66,84,0.72); text-transform: lowercase; }
+        .wake-indicator { position: fixed; top: calc(14px + env(safe-area-inset-top)); left: 14px; z-index: 10; display: flex; align-items: center; gap: 8px; border: 1px solid rgba(43,66,84,0.14); border-radius: 999px; background: rgba(255,255,255,0.66); color: rgba(43,66,84,0.66); padding: 8px 11px; font-size: 11px; font-weight: 800; backdrop-filter: blur(12px); }
+        .settings-link { position: fixed; top: calc(14px + env(safe-area-inset-top)); right: 14px; z-index: 10; display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; border: 1px solid rgba(43,66,84,0.14); border-radius: 999px; background: rgba(255,255,255,0.66); color: rgba(43,66,84,0.72); text-decoration: none; backdrop-filter: blur(12px); }
         .settings-link:hover { color: #fff; border-color: rgba(var(--nobu-rgb),0.45); }
         .wake-indicator-dot { width: 6px; height: 6px; border-radius: 999px; background: #34d399; box-shadow: 0 0 10px rgba(52,211,153,0.6); }
         .wake-indicator.blocked .wake-indicator-dot,
@@ -368,11 +365,7 @@ export default function Home() {
 
       {/* NobuCharacter in the room environment */}
       <div className={`nobu-stage${status === 'connected' ? ' awake' : ''}`} ref={stageRef}>
-        <NobuRoom
-          activeAction={roomAction}
-          character={character}
-          onActionChange={setRoomAction}
-        />
+        <NobuRoom character={character} />
         <Link aria-label="Open Nobu settings" className="settings-link" href="/settings">
           <svg aria-hidden="true" fill="none" height="17" viewBox="0 0 24 24" width="17">
             <path
@@ -393,19 +386,12 @@ export default function Home() {
             character={character}
             isListening={isListening}
             isSpeaking={isSpeaking}
-            roomAction={roomAction}
             shouldLoad={
               !introVisible ||
               status === 'connecting' ||
               status === 'connected'
             }
           />
-        </div>
-        <div aria-label="Nobu capabilities" className="capability-strip">
-          <span className="capability-pill">Voice assistant</span>
-          <span className="capability-pill">Memory</span>
-          <span className="capability-pill">Planning</span>
-          <Link className="capability-pill" href="/scanfit">ScanFit style help</Link>
         </div>
         <div className="status">
           <div className="s-dot"></div>

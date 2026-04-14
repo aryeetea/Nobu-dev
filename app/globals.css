@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f8f4;
-  --foreground: #11140f;
+  --background: #eaf6ff;
+  --foreground: #2b4254;
 }
 
 @theme inline {
@@ -16,6 +16,9 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 elevenlabs-convai {
