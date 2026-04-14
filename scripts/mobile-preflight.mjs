@@ -45,6 +45,16 @@ const checks = [
     required: true,
   },
   {
+    label: 'iOS native Live2D view header',
+    path: 'ios/App/App/NobuLive2D/NobuLive2DView.h',
+    required: true,
+  },
+  {
+    label: 'iOS native Live2D view implementation',
+    path: 'ios/App/App/NobuLive2D/NobuLive2DView.mm',
+    required: true,
+  },
+  {
     label: 'iOS Swift bridge header',
     path: 'ios/App/App/App-Bridging-Header.h',
     required: true,
@@ -111,10 +121,18 @@ const iosBundlesModels = xcodeProject.includes('models in Resources') &&
 const iosLinksLive2DCore = xcodeProject.includes('-lLive2DCubismCore') &&
   xcodeProject.includes('vendor/live2d/ios/Core/include')
 const iosUsesBridgeHeader = xcodeProject.includes('SWIFT_OBJC_BRIDGING_HEADER = "App/App-Bridging-Header.h"')
+const iosCompilesNativeLive2DView = xcodeProject.includes('NobuLive2DView.mm in Sources') &&
+  xcodeProject.includes('MetalKit.framework in Frameworks')
+const iosCompilesOfficialLive2DMetal = xcodeProject.includes('CubismFramework.cpp in Sources') &&
+  xcodeProject.includes('CubismRenderer_Metal.mm in Sources') &&
+  xcodeProject.includes('vendor/live2d/ios/Framework/src')
 mark(iosBundlesModels, 'iOS bundles original Live2D model folder')
 mark(iosLinksLive2DCore, 'iOS links official Live2D Cubism Core')
 mark(iosUsesBridgeHeader, 'iOS exposes Live2D bridge to Swift')
-failed ||= !iosBundlesModels || !iosLinksLive2DCore || !iosUsesBridgeHeader
+mark(iosCompilesNativeLive2DView, 'iOS compiles native Live2D Metal view')
+mark(iosCompilesOfficialLive2DMetal, 'iOS compiles official Live2D Framework Metal renderer')
+failed ||= !iosBundlesModels || !iosLinksLive2DCore || !iosUsesBridgeHeader ||
+  !iosCompilesNativeLive2DView || !iosCompilesOfficialLive2DMetal
 
 const hasPublicApiKey = /^\s*NEXT_PUBLIC_.*(?:API_KEY|SECRET|TOKEN)\s*=/m.test(envLocal)
 if (hasPublicApiKey) {

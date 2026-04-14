@@ -4,6 +4,7 @@ import UIKit
 final class NobuRootViewController: UIViewController {
     private let roomImageView = UIImageView(image: UIImage(named: "NobuRoomAlexia"))
     private let characterStage = UIView()
+    private let live2DView = NobuLive2DView(character: "Alexia")
 
     override var prefersStatusBarHidden: Bool {
         false
@@ -48,6 +49,17 @@ final class NobuRootViewController: UIViewController {
             characterStage.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -68),
             characterStage.widthAnchor.constraint(equalTo: view.widthAnchor),
             characterStage.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.72)
+        ])
+
+        live2DView.translatesAutoresizingMaskIntoConstraints = false
+        live2DView.backgroundColor = UIColor.clear
+        characterStage.addSubview(live2DView)
+
+        NSLayoutConstraint.activate([
+            live2DView.leadingAnchor.constraint(equalTo: characterStage.leadingAnchor),
+            live2DView.trailingAnchor.constraint(equalTo: characterStage.trailingAnchor),
+            live2DView.topAnchor.constraint(equalTo: characterStage.topAnchor),
+            live2DView.bottomAnchor.constraint(equalTo: characterStage.bottomAnchor)
         ])
     }
 
