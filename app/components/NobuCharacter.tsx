@@ -278,7 +278,7 @@ export default function NobuCharacter({
 
     let cancelled = false
     let resizeObserver: ResizeObserver | null = null
-    let applyToggleFrame: (() => void) | null = null
+    let pacingFrame: (() => void) | null = null
     const host = hostRef.current
 
     async function loadCharacter() {
@@ -319,7 +319,6 @@ export default function NobuCharacter({
         })
 
         if (cancelled) {
-          model.destroy?.()
           app.destroy(true, { baseTexture: true, children: true, texture: true })
           return
         }
@@ -332,11 +331,10 @@ export default function NobuCharacter({
         basePlacementRef.current = placeModel(model, app, roomActionRef.current)
         applyToggles(model, togglesRef.current)
 
-        applyToggleFrame = () => {
-          applyToggles(modelRef.current, togglesRef.current)
+        pacingFrame = () => {
           paceModel(modelRef.current, basePlacementRef.current, roomActionRef.current)
         }
-        app.ticker.add(applyToggleFrame)
+        app.ticker.add(pacingFrame)
 
         resizeObserver = new ResizeObserver(() => {
           if (!appRef.current || !modelRef.current) return
@@ -367,10 +365,9 @@ export default function NobuCharacter({
     return () => {
       cancelled = true
       resizeObserver?.disconnect()
-      if (applyToggleFrame && appRef.current) {
-        appRef.current.ticker.remove(applyToggleFrame)
+      if (pacingFrame && appRef.current) {
+        appRef.current.ticker.remove(pacingFrame)
       }
-      modelRef.current?.destroy?.()
       appRef.current?.destroy(true, { baseTexture: true, children: true, texture: true })
       modelRef.current = null
       appRef.current = null
