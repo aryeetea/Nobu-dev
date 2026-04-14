@@ -45,6 +45,8 @@ type PixiApp = {
   }
   ticker: {
     add: (fn: () => void) => void
+    maxFPS: number
+    minFPS: number
     remove: (fn: () => void) => void
   }
   view: HTMLCanvasElement
@@ -139,6 +141,8 @@ declare global {
 
 const CUBISM_CORE_SCRIPT_ID = 'nobu-cubism4-core'
 const CUBISM_CORE_SCRIPT_SRC = '/live2d/live2dcubismcore.min.js'
+const ACTIVE_FPS = 30
+const IDLE_FPS = 20
 const patchedRendererPrototypes = new WeakSet<CubismRendererPrototype>()
 
 const CHARACTER_COPY: Record<Character, string> = {
@@ -148,6 +152,16 @@ const CHARACTER_COPY: Record<Character, string> = {
 
 function isSmallScreen() {
   return window.matchMedia('(max-width: 760px)').matches
+}
+
+function getRenderResolution() {
+  const deviceResolution = window.devicePixelRatio || 1
+  return Math.min(deviceResolution, isSmallScreen() ? 1.5 : 2)
+}
+
+function configureTicker(app: PixiApp, active: boolean) {
+  app.ticker.minFPS = 0
+  app.ticker.maxFPS = active ? ACTIVE_FPS : IDLE_FPS
 }
 
 function loadCubismCore() {
@@ -423,15 +437,17 @@ export default function NobuCharacter({
         if (cancelled || !hostRef.current) return
 
         const app = new PIXI.Application({
-          antialias: true,
+          antialias: !isSmallScreen(),
           autoDensity: true,
           backgroundAlpha: 0,
           height: Math.max(1, host.clientHeight),
-          resolution: Math.min(window.devicePixelRatio || 1, 2),
+          powerPreference: 'low-power',
+          resolution: getRenderResolution(),
           width: Math.max(1, host.clientWidth),
         })
 
         appRef.current = app
+        configureTicker(app, false)
         host.replaceChildren(app.view)
 
         const model = await Live2DModel.from(live2dModels[character].path, {
@@ -532,6 +548,11 @@ export default function NobuCharacter({
         console.warn('Unable to play Nobu Live2D motion:', error)
       })
   }, [loadStatus, motionRequest])
+
+  useEffect(() => {
+    if (!appRef.current) return
+    configureTicker(appRef.current, isSpeaking || isListening)
+  }, [isListening, isSpeaking])
 
   return (
     <div

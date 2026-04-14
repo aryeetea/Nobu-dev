@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useState } from 'react'
 import type { NobuRoomAction } from './NobuCharacter'
 
@@ -291,15 +292,18 @@ export default function NobuRoom({ character, onRoomAction }: Props) {
         }
       `}</style>
 
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <Image
         alt=""
         aria-hidden="true"
         className="photo-room-art"
         decoding="async"
         draggable={false}
+        fill
         fetchPriority="high"
+        loading="eager"
+        sizes="100vw"
         src={roomImage}
+        unoptimized
       />
       <div aria-hidden="true" className="room-atmosphere" />
       <div className="room-hotspots">
