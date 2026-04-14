@@ -1,7 +1,7 @@
 // components/NobuCharacter.tsx
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const CUBISM_CORE_SRC = '/live2d/live2dcubismcore.min.js'
 
@@ -31,6 +31,7 @@ type PixiApplication = {
 
 type PixiModule = {
   Application: new (options: Record<string, unknown>) => PixiApplication
+  Ticker?: unknown
 }
 
 type NobuLive2DModel = {
@@ -52,7 +53,8 @@ type NobuLive2DModel = {
 
 type Live2DModule = {
   Live2DModel: {
-    from: (path: string) => Promise<NobuLive2DModel>
+    from: (path: string, options?: Record<string, unknown>) => Promise<NobuLive2DModel>
+    registerTicker?: (tickerClass: unknown) => void
   }
 }
 
@@ -67,6 +69,35 @@ type IdleWindow = Window & {
 }
 
 let cubismCoreLoadPromise: Promise<void> | null = null
+
+function placeModel(model: NobuLive2DModel, app: PixiApplication) {
+  model.anchor.set(0.5, 1)
+  model.x = app.screen.width / 2
+  model.y = app.screen.height * 0.98
+  const responsiveScale = Math.min(app.screen.width / 900, app.screen.height / 1350)
+  model.scale.set(Math.min(Math.max(responsiveScale, 0.42), 0.82))
+}
+
+function startIdleMotion(model: NobuLive2DModel) {
+  const motionGroups = ['Idle', 'idle', '']
+
+  for (const group of motionGroups) {
+    try {
+      model.motion(group)
+      return
+    } catch {
+      // Some model files do not define a named idle motion.
+    }
+  }
+}
+
+function setModelParameter(model: NobuLive2DModel, parameterId: string, value: number) {
+  try {
+    model.internalModel.coreModel.setParameterValueById(parameterId, value)
+  } catch {
+    // Models can vary in which optional expression parameters they expose.
+  }
+}
 
 function loadCubismCore() {
   if (cubismCoreLoadPromise) return cubismCoreLoadPromise
@@ -112,6 +143,7 @@ export default function NobuCharacter({ character, isSpeaking, isListening, shou
   const appRef = useRef<PixiApplication | null>(null)
   const hasLoadedRef = useRef(false)
   const shouldLoadRef = useRef(shouldLoad)
+  const [loadError, setLoadError] = useState('')
 
   useEffect(() => {
     shouldLoadRef.current = shouldLoad
@@ -119,21 +151,26 @@ export default function NobuCharacter({ character, isSpeaking, isListening, shou
 
   useEffect(() => {
     let idleTimer: ReturnType<typeof setInterval> | undefined
-    let observer: IntersectionObserver | undefined
     let idleHandle: number | undefined
     let fallbackTimer: ReturnType<typeof setTimeout> | undefined
+    let resizeHandler: (() => void) | undefined
     let cancelled = false
 
     async function loadModel() {
       if (hasLoadedRef.current) return
       hasLoadedRef.current = true
+      setLoadError('')
 
       try {
         await loadCubismCore()
         if (cancelled || !canvasRef.current) return
 
         const PIXI = await import('pixi.js') as unknown as PixiModule
+        ;(window as unknown as { PIXI: PixiModule }).PIXI = PIXI
         const { Live2DModel } = (await import('@guansss/pixi-live2d-display/cubism4')) as Live2DModule
+        if (PIXI.Ticker) {
+          Live2DModel.registerTicker?.(PIXI.Ticker)
+        }
         if (cancelled || !canvasRef.current) return
 
         canvasRef.current.innerHTML = ''
@@ -146,25 +183,27 @@ export default function NobuCharacter({ character, isSpeaking, isListening, shou
         })
         appRef.current = app
         canvasRef.current.appendChild(app.view)
-        const model = await Live2DModel.from(MODEL_PATHS[character])
+        const model = await Live2DModel.from(MODEL_PATHS[character], {
+          autoInteract: false,
+          autoUpdate: true,
+        })
         if (cancelled) {
           app.destroy(true, { children: true })
           return
         }
 
-        model.anchor.set(0.5, 1)
-        model.x = app.screen.width / 2
-        model.y = app.screen.height * 0.95
-        model.scale.set(Math.min(app.screen.width / 1200, app.screen.height / 1800))
+        placeModel(model, app)
         app.stage.addChild(model)
         modelRef.current = model
-        // Idle motion
-        model.motion('Idle')
+        startIdleMotion(model)
+        resizeHandler = () => placeModel(model, app)
+        window.addEventListener('resize', resizeHandler)
         idleTimer = setInterval(() => {
-          model.motion('Idle')
+          startIdleMotion(model)
         }, 12000)
       } catch (error) {
         hasLoadedRef.current = false
+        setLoadError(error instanceof Error ? error.message : 'Unable to load Nobu Live2D model.')
         console.error('Unable to load Nobu Live2D model:', error)
       }
     }
@@ -190,26 +229,16 @@ export default function NobuCharacter({ character, isSpeaking, isListening, shou
       }
     }
 
-    if ('IntersectionObserver' in window && canvasRef.current) {
-      observer = new IntersectionObserver((entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          observer?.disconnect()
-          loadWhenIdle()
-        }
-      }, { rootMargin: '160px' })
-      observer.observe(canvasRef.current)
-    } else {
-      loadWhenIdle()
-    }
+    loadWhenIdle()
 
     return () => {
       cancelled = true
-      observer?.disconnect()
       if (idleHandle !== undefined) {
         ;(window as IdleWindow).cancelIdleCallback?.(idleHandle)
       }
       if (fallbackTimer) clearTimeout(fallbackTimer)
       if (idleTimer) clearInterval(idleTimer)
+      if (resizeHandler) window.removeEventListener('resize', resizeHandler)
       if (appRef.current) appRef.current.destroy(true, { children: true })
       appRef.current = null
       modelRef.current = null
@@ -222,21 +251,30 @@ export default function NobuCharacter({ character, isSpeaking, isListening, shou
     const model = modelRef.current
     if (!model) return
     // Speaking: open mouth
-    model.internalModel.coreModel.setParameterValueById('ParamMouthOpenY', isSpeaking ? 1 : 0)
+    setModelParameter(model, 'ParamMouthOpenY', isSpeaking ? 1 : 0)
     // Listening: animate head/eyes
     if (isListening) {
-      model.internalModel.coreModel.setParameterValueById('ParamAngleY', Math.random() * 30 - 15)
-      model.internalModel.coreModel.setParameterValueById('ParamEyeBallX', Math.random() * 0.6 - 0.3)
+      setModelParameter(model, 'ParamAngleY', Math.random() * 30 - 15)
+      setModelParameter(model, 'ParamEyeBallX', Math.random() * 0.6 - 0.3)
     } else {
-      model.internalModel.coreModel.setParameterValueById('ParamAngleY', 0)
-      model.internalModel.coreModel.setParameterValueById('ParamEyeBallX', 0)
+      setModelParameter(model, 'ParamAngleY', 0)
+      setModelParameter(model, 'ParamEyeBallX', 0)
     }
   }, [isSpeaking, isListening])
 
   return (
-    <div
-      ref={canvasRef}
-      style={{ width: '100vw', height: '90vh', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', position: 'absolute', top: 0, left: 0, zIndex: 2 }}
-    />
+    <>
+      <div
+        ref={canvasRef}
+        style={{ width: '100vw', height: '90vh', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', position: 'absolute', top: 0, left: 0, zIndex: 2 }}
+      />
+      {loadError && (
+        <div
+          style={{ position: 'absolute', bottom: 72, left: '50%', transform: 'translateX(-50%)', zIndex: 6, color: 'rgba(255,255,255,0.7)', fontSize: 12, maxWidth: 'min(520px, calc(100vw - 32px))', textAlign: 'center', pointerEvents: 'none' }}
+        >
+          Nobu character could not load: {loadError}
+        </div>
+      )}
+    </>
   )
 }

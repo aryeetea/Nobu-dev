@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { type CSSProperties, useState } from 'react'
 import {
+  characterOptions,
   colorOptions,
   DEFAULT_NOBU_SETTINGS,
   hexToRgb,
@@ -20,6 +21,7 @@ export default function OnboardingPage() {
   const { data: session, status: authStatus } = useSession()
   const [step, setStep] = useState(0)
   const [name, setName] = useState('')
+  const [character, setCharacter] = useState<NobuSettings['character']>('female')
   const [voiceId, setVoiceId] = useState<NobuVoiceId>('eXpIbVcVbLo8ZJQDlDnl')
   const [vibe, setVibe] = useState<NobuVibeId>('chill')
   const [color, setColor] = useState('#7c3aed')
@@ -31,7 +33,7 @@ export default function OnboardingPage() {
   function completeOnboarding() {
     const settings: NobuSettings = {
       ...DEFAULT_NOBU_SETTINGS,
-      character: voiceId === '5kMbtRSEKIkRZSdXxrZg' ? 'male' : 'female',
+      character,
       color,
       hasCompletedOnboarding: true,
       hasUsedRename: false,
@@ -80,8 +82,8 @@ export default function OnboardingPage() {
         @media (max-width: 760px) { .choice-grid, .vibe-grid, .color-layout { grid-template-columns: 1fr; } .onboarding-title { font-size: 38px; } .color-layout { justify-items: center; } }
       `}</style>
 
-      <div aria-label={`Step ${step + 1} of 4`} className="step-indicator">
-        {[0, 1, 2, 3].map((item) => (
+      <div aria-label={`Step ${step + 1} of 5`} className="step-indicator">
+        {[0, 1, 2, 3, 4].map((item) => (
           <span className={`step-dot ${step === item ? 'active' : ''}`} key={item} />
         ))}
       </div>
@@ -109,13 +111,16 @@ export default function OnboardingPage() {
 
       {step === 1 && (
         <section className="onboarding-step">
-          <h1 className="onboarding-title">How should I sound?</h1>
+          <h1 className="onboarding-title">Who should appear?</h1>
+          <p className="onboarding-copy">
+            This controls the 2D character you see. Your voice can still be picked separately.
+          </p>
           <div className="choice-grid">
-            {voiceOptions.map((option) => (
+            {characterOptions.map((option) => (
               <button
-                className={`choice-card ${voiceId === option.voiceId ? 'selected' : ''}`}
+                className={`choice-card ${character === option.id ? 'selected' : ''}`}
                 key={option.id}
-                onClick={() => setVoiceId(option.voiceId)}
+                onClick={() => setCharacter(option.id)}
               >
                 <h2>{option.label}</h2>
                 <p>{option.description}</p>
@@ -130,13 +135,13 @@ export default function OnboardingPage() {
 
       {step === 2 && (
         <section className="onboarding-step">
-          <h1 className="onboarding-title">How should I talk to you?</h1>
-          <div className="vibe-grid">
-            {vibeOptions.map((option) => (
+          <h1 className="onboarding-title">How should I sound?</h1>
+          <div className="choice-grid">
+            {voiceOptions.map((option) => (
               <button
-                className={`choice-card ${vibe === option.id ? 'selected' : ''}`}
+                className={`choice-card ${voiceId === option.voiceId ? 'selected' : ''}`}
                 key={option.id}
-                onClick={() => setVibe(option.id)}
+                onClick={() => setVoiceId(option.voiceId)}
               >
                 <h2>{option.label}</h2>
                 <p>{option.description}</p>
@@ -150,6 +155,27 @@ export default function OnboardingPage() {
       )}
 
       {step === 3 && (
+        <section className="onboarding-step">
+          <h1 className="onboarding-title">How should I talk to you?</h1>
+          <div className="vibe-grid">
+            {vibeOptions.map((option) => (
+              <button
+                className={`choice-card ${vibe === option.id ? 'selected' : ''}`}
+                key={option.id}
+                onClick={() => setVibe(option.id)}
+              >
+                <h2>{option.label}</h2>
+                <p>{option.description}</p>
+              </button>
+            ))}
+          </div>
+          <button className="primary-btn" onClick={() => setStep(4)}>
+            Continue
+          </button>
+        </section>
+      )}
+
+      {step === 4 && (
         <section className="onboarding-step">
           <h1 className="onboarding-title">Pick my glow.</h1>
           <div className="color-layout">

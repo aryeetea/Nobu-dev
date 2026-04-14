@@ -45,6 +45,19 @@ export const voiceOptions = [
   },
 ]
 
+export const characterOptions = [
+  {
+    id: 'female' as const,
+    label: 'Female Nobu',
+    description: 'Alexia: expressive, soft, and bright on screen.',
+  },
+  {
+    id: 'male' as const,
+    label: 'Male Nobu',
+    description: 'Asuka: calm, sharp, and grounded on screen.',
+  },
+]
+
 export const vibeOptions = [
   {
     id: 'genz' as const,

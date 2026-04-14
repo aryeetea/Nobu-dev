@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { type CSSProperties, useEffect, useState } from 'react'
 import {
+  characterOptions,
   colorOptions,
   hexToRgb,
   loadNobuSettings,
@@ -144,16 +145,29 @@ export default function SettingsPage() {
           </div>
 
           <div className="setting-row">
+            <div className="setting-label">Character</div>
+            <div className="option-grid">
+              {characterOptions.map((option) => (
+                <button
+                  className={`option-card ${settings.character === option.id ? 'selected' : ''}`}
+                  key={option.id}
+                  onClick={() => updateSettings({ character: option.id })}
+                >
+                  <strong>{option.label}</strong>
+                  <p className="muted">{option.description}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="setting-row">
             <div className="setting-label">Voice</div>
             <div className="option-grid">
               {voiceOptions.map((option) => (
                 <button
                   className={`option-card ${settings.voiceId === option.voiceId ? 'selected' : ''}`}
                   key={option.id}
-                  onClick={() => updateSettings({
-                    character: option.id === 'male' ? 'male' : 'female',
-                    voiceId: option.voiceId,
-                  })}
+                  onClick={() => updateSettings({ voiceId: option.voiceId })}
                 >
                   <strong>{option.label}</strong>
                   <p className="muted">{option.description}</p>
