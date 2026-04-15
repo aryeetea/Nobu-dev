@@ -46,6 +46,47 @@ function patchMetalCommandBuffer(sdkDir) {
     _indices = [device newBufferWithLength:bufferLength
                                                 options:MTLResourceStorageModeShared];`,
   )
+  source = source.replace(
+    `    csmFloat32* destVertices = reinterpret_cast<csmFloat32*>([_vertices contents]);`,
+    `    if (length == 0 || data == NULL || uvData == NULL)
+    {
+        return;
+    }
+
+    csmFloat32* destVertices = reinterpret_cast<csmFloat32*>([_vertices contents]);`,
+  )
+  source = source.replace(
+    `    csmInt16* dest = reinterpret_cast<csmInt16*>([_indices contents]);`,
+    `    if (length == 0 || data == NULL)
+    {
+        return;
+    }
+
+    csmInt16* dest = reinterpret_cast<csmInt16*>([_indices contents]);`,
+  )
+  writeFileSync(path, source)
+}
+
+function patchMetalRenderer(sdkDir) {
+  const path = join(sdkDir, 'Framework/src/Rendering/Metal/CubismRenderer_Metal.mm')
+  if (!existsSync(path)) {
+    return
+  }
+
+  let source = readFileSync(path, 'utf8')
+  source = source.replace(
+    `{
+#ifndef CSM_DEBUG
+    if (_textures[model.GetDrawableTextureIndex(index)] == 0)`,
+    `{
+    if (model.GetDrawableVertexCount(index) <= 0 || model.GetDrawableVertexIndexCount(index) <= 0)
+    {
+        return;
+    }
+
+#ifndef CSM_DEBUG
+    if (_textures[model.GetDrawableTextureIndex(index)] == 0)`,
+  )
   writeFileSync(path, source)
 }
 
@@ -87,6 +128,7 @@ cpSync(join(sourceDir, 'Samples/Metal'), join(iosDir, 'Samples/Metal'), { recurs
 cpSync(join(sourceDir, 'LICENSE.md'), join(iosDir, 'LICENSE.md'))
 cpSync(join(sourceDir, 'NOTICE.md'), join(iosDir, 'NOTICE.md'))
 patchMetalCommandBuffer(iosDir)
+patchMetalRenderer(iosDir)
 
 cpSync(join(sourceDir, 'Core/include'), join(androidDir, 'Core/include'), { recursive: true })
 cpSync(join(sourceDir, 'Core/lib/android'), join(androidDir, 'Core/lib'), { recursive: true })

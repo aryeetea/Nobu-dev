@@ -130,7 +130,10 @@ const iosCompilesOfficialLive2DMetal = xcodeProject.includes('CubismFramework.cp
   xcodeProject.includes('vendor/live2d/ios/Framework/src')
 const iosBuildsLive2DMetalShaders = xcodeProject.includes('Compile Live2D Metal shaders') &&
   xcodeProject.includes('FrameworkMetallibs/MetalShaders.metallib') &&
-  xcodeProject.includes('MetalShaders.metal')
+  xcodeProject.includes('MetalShaders.metal') &&
+  xcodeProject.includes('FragShaderSrcBlend') &&
+  xcodeProject.includes('CSM_COLOR_BLEND_MODE') &&
+  xcodeProject.includes('VertShaderSrcMaskedBlend')
 const iosLive2DDepthTexture = nativeLive2DView.includes('MTLPixelFormatDepth32Float') &&
   nativeLive2DView.includes('passDescriptor.depthAttachment.texture')
 const iosLive2DZeroBufferGuard = prepareLive2DSdk.includes('patchMetalCommandBuffer') &&
