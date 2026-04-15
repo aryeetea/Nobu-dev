@@ -438,8 +438,8 @@ private:
         csmMap<csmString, csmFloat32> layout;
         _modelSetting->GetLayoutMap(layout);
         _modelMatrix->SetupFromLayout(layout);
-        _modelMatrix->Scale(1.18f, 1.18f);
-        _modelMatrix->TranslateY(-0.08f);
+        _modelMatrix->Scale(1.28f, 1.28f);
+        _modelMatrix->TranslateY(-0.14f);
         GetModel()->SaveParameters();
     }
 

@@ -4,14 +4,19 @@ import UIKit
 final class NobuRootViewController: UIViewController {
     private let roomImageView = UIImageView(image: UIImage(named: "NobuRoomAlexia"))
     private let characterStage = UIView()
+    private let floorShadowView = UIView()
     private let live2DView = NobuLive2DView(character: "Alexia")
 
     override var prefersStatusBarHidden: Bool {
-        false
+        true
     }
 
     override var preferredStatusBarStyle: UIStatusBarStyle {
         .darkContent
+    }
+
+    override var prefersHomeIndicatorAutoHidden: Bool {
+        true
     }
 
     override func viewDidLoad() {
@@ -51,11 +56,25 @@ final class NobuRootViewController: UIViewController {
             characterStage.heightAnchor.constraint(equalTo: view.heightAnchor, multiplier: 0.72)
         ])
 
+        floorShadowView.translatesAutoresizingMaskIntoConstraints = false
+        floorShadowView.backgroundColor = UIColor.black.withAlphaComponent(0.16)
+        floorShadowView.layer.cornerRadius = 16
+        floorShadowView.layer.shadowColor = UIColor.black.cgColor
+        floorShadowView.layer.shadowOpacity = 0.18
+        floorShadowView.layer.shadowRadius = 14
+        floorShadowView.layer.shadowOffset = CGSize(width: 0, height: 4)
+        characterStage.addSubview(floorShadowView)
+
         live2DView.translatesAutoresizingMaskIntoConstraints = false
         live2DView.backgroundColor = UIColor.clear
         characterStage.addSubview(live2DView)
 
         NSLayoutConstraint.activate([
+            floorShadowView.centerXAnchor.constraint(equalTo: characterStage.centerXAnchor),
+            floorShadowView.bottomAnchor.constraint(equalTo: characterStage.bottomAnchor, constant: -22),
+            floorShadowView.widthAnchor.constraint(equalTo: characterStage.widthAnchor, multiplier: 0.16),
+            floorShadowView.heightAnchor.constraint(equalToConstant: 32),
+
             live2DView.leadingAnchor.constraint(equalTo: characterStage.leadingAnchor),
             live2DView.trailingAnchor.constraint(equalTo: characterStage.trailingAnchor),
             live2DView.topAnchor.constraint(equalTo: characterStage.topAnchor),
