@@ -112,11 +112,16 @@ mark(androidCamera, 'Android camera permission')
 mark(androidMic, 'Android microphone permission')
 failed ||= !androidCamera || !androidMic
 
-const usesAlexiaOriginal = live2dModels.includes("path: '/models/Alexia/Alexia.model3.json'")
-const usesAsukaOriginal = live2dModels.includes("path: '/models/ASUKA/Asuka.model3.json'")
-mark(usesAlexiaOriginal, 'App points Alexia to creator original')
-mark(usesAsukaOriginal, 'App points Asuka to creator original')
-failed ||= !usesAlexiaOriginal || !usesAsukaOriginal
+const keepsAlexiaOriginal = live2dModels.includes("path: '/models/Alexia/Alexia.model3.json'")
+const keepsAsukaOriginal = live2dModels.includes("path: '/models/ASUKA/Asuka.model3.json'")
+const nativeUsesAlexiaAppModel = nativeLive2DView.includes('Alexia.app.model3.json')
+const nativeUsesAsukaAppModel = nativeLive2DView.includes('Asuka.app.model3.json')
+mark(keepsAlexiaOriginal, 'Alexia creator original remains available')
+mark(keepsAsukaOriginal, 'Asuka creator original remains available')
+mark(nativeUsesAlexiaAppModel, 'Native app uses Alexia mobile texture model')
+mark(nativeUsesAsukaAppModel, 'Native app uses Asuka mobile texture model')
+failed ||= !keepsAlexiaOriginal || !keepsAsukaOriginal ||
+  !nativeUsesAlexiaAppModel || !nativeUsesAsukaAppModel
 
 const iosBundlesModels = xcodeProject.includes('models in Resources') &&
   xcodeProject.includes('../../../public/models')
@@ -138,6 +143,14 @@ const iosLive2DDepthTexture = nativeLive2DView.includes('MTLPixelFormatDepth32Fl
   nativeLive2DView.includes('passDescriptor.depthAttachment.texture')
 const iosLive2DZeroBufferGuard = prepareLive2DSdk.includes('patchMetalCommandBuffer') &&
   prepareLive2DSdk.includes('bufferLength == 0')
+const iosLive2DUrlShaderLoader = prepareLive2DSdk.includes('patchMetalShaderLoader') &&
+  prepareLive2DSdk.includes('newLibraryWithURL:vertShaderFileLibURL') &&
+  prepareLive2DSdk.includes('newLibraryWithURL:fragShaderFileLibURL')
+const iosLive2DReleasesShaderLibraries = prepareLive2DSdk.includes('[vertShaderLib release]') &&
+  prepareLive2DSdk.includes('[fragShaderLib release]')
+const iosLive2DDataTextureLoader = nativeLive2DView.includes('newTextureWithData') &&
+  nativeLive2DView.includes('MobileTextureFallbackPath') &&
+  nativeLive2DView.includes('_loadedTextures')
 mark(iosBundlesModels, 'iOS bundles original Live2D model folder')
 mark(iosLinksLive2DCore, 'iOS links official Live2D Cubism Core')
 mark(iosUsesBridgeHeader, 'iOS exposes Live2D bridge to Swift')
@@ -146,9 +159,14 @@ mark(iosCompilesOfficialLive2DMetal, 'iOS compiles official Live2D Framework Met
 mark(iosBuildsLive2DMetalShaders, 'iOS builds Live2D Metal shader library')
 mark(iosLive2DDepthTexture, 'iOS provides Live2D Metal depth texture')
 mark(iosLive2DZeroBufferGuard, 'iOS patches Live2D zero-length Metal buffers')
+mark(iosLive2DUrlShaderLoader, 'iOS loads Live2D shader libraries by URL')
+mark(iosLive2DReleasesShaderLibraries, 'iOS releases temporary Live2D shader libraries')
+mark(iosLive2DDataTextureLoader, 'iOS loads and retains Live2D textures from bundled data')
 failed ||= !iosBundlesModels || !iosLinksLive2DCore || !iosUsesBridgeHeader ||
   !iosCompilesNativeLive2DView || !iosCompilesOfficialLive2DMetal ||
-  !iosBuildsLive2DMetalShaders || !iosLive2DDepthTexture || !iosLive2DZeroBufferGuard
+  !iosBuildsLive2DMetalShaders || !iosLive2DDepthTexture || !iosLive2DZeroBufferGuard ||
+  !iosLive2DUrlShaderLoader || !iosLive2DReleasesShaderLibraries ||
+  !iosLive2DDataTextureLoader
 
 const hasPublicApiKey = /^\s*NEXT_PUBLIC_.*(?:API_KEY|SECRET|TOKEN)\s*=/m.test(envLocal)
 if (hasPublicApiKey) {

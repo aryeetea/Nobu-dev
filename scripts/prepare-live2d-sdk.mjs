@@ -90,6 +90,96 @@ function patchMetalRenderer(sdkDir) {
   writeFileSync(path, source)
 }
 
+function patchMetalShaderLoader(sdkDir) {
+  const path = join(sdkDir, 'Framework/src/Rendering/Metal/CubismShader_Metal.mm')
+  if (!existsSync(path)) {
+    return
+  }
+
+  let source = readFileSync(path, 'utf8')
+  source = source.replace(
+    `    // 頂点シェーダの取得/
+    NSData *vertShaderData = [NSData dataWithContentsOfURL:vertShaderFileLibURL];
+   if(vertShaderData == nil)
+   {
+       NSLog(@"ERROR: File load failed : %@", [vertShaderFileLibURL absoluteString]);
+       return nil;
+   }
+   if([vertShaderData length] == 0)
+   {
+       NSLog(@"ERROR: File is loaded but file size is zero : %@", [vertShaderFileLibURL absoluteString]);
+       return nil;
+   }
+    NSUInteger vertShaderByteLen = [vertShaderData length];
+    Byte* vertShaderByteData = (Byte*)malloc(vertShaderByteLen);
+    memcpy(vertShaderByteData, [vertShaderData bytes], vertShaderByteLen);
+    dispatch_data_t vertShaderDispatchData = dispatch_data_create(vertShaderByteData, vertShaderByteLen, nil, DISPATCH_DATA_DESTRUCTOR_FREE);
+    id<MTLLibrary> vertShaderLib = [device newLibraryWithData:vertShaderDispatchData error:nil];
+    if(!vertShaderLib)
+    {
+        NSLog(@" ERROR: Couldnt create a vertex shader library");
+        return nil;
+    }
+
+    // フラグメントシェーダの取得
+   NSData *fragShaderData = [NSData dataWithContentsOfURL:fragShaderFileLibURL];
+   if(fragShaderData == nil)
+   {
+       NSLog(@"ERROR: File load failed : %@", [fragShaderFileLibURL absoluteString]);
+       return nil;
+   }
+   if([fragShaderData length] == 0)
+   {
+       NSLog(@"ERROR: File is loaded but file size is zero : %@", [fragShaderFileLibURL absoluteString]);
+       return nil;
+   }
+    NSUInteger fragShaderByteLen = [fragShaderData length];
+    Byte* fragShaderByteData = (Byte*)malloc(fragShaderByteLen);
+    memcpy(fragShaderByteData, [fragShaderData bytes], fragShaderByteLen);
+    dispatch_data_t fragShaderDispatchData = dispatch_data_create(fragShaderByteData, fragShaderByteLen, nil, DISPATCH_DATA_DESTRUCTOR_FREE);
+    id<MTLLibrary> fragShaderLib = [device newLibraryWithData:fragShaderDispatchData error:nil];
+    if(!fragShaderLib)
+    {
+        NSLog(@" ERROR: Couldnt create a frag shader library");
+        return nil;
+    }`,
+    `    // 頂点シェーダの取得/
+    if(vertShaderFileLibURL == nil)
+    {
+        NSLog(@"ERROR: File load failed : %@", vertShaderFileNameStr);
+        return nil;
+    }
+    id<MTLLibrary> vertShaderLib = [device newLibraryWithURL:vertShaderFileLibURL error:nil];
+    if(!vertShaderLib)
+    {
+        NSLog(@" ERROR: Couldnt create a vertex shader library: %@", [vertShaderFileLibURL absoluteString]);
+        return nil;
+    }
+
+    // フラグメントシェーダの取得
+    if(fragShaderFileLibURL == nil)
+    {
+        NSLog(@"ERROR: File load failed : %@", fragShaderFileNameStr);
+        return nil;
+    }
+    id<MTLLibrary> fragShaderLib = [device newLibraryWithURL:fragShaderFileLibURL error:nil];
+    if(!fragShaderLib)
+    {
+        NSLog(@" ERROR: Couldnt create a frag shader library: %@", [fragShaderFileLibURL absoluteString]);
+        return nil;
+    }`,
+  )
+  source = source.replace(
+    `  ShaderProgram* shaderProgram = LoadShaderProgram(vertShaderSrc, fragShaderSrc, vertShaderLib, fragShaderLib);
+  return shaderProgram;`,
+    `  ShaderProgram* shaderProgram = LoadShaderProgram(vertShaderSrc, fragShaderSrc, vertShaderLib, fragShaderLib);
+  [vertShaderLib release];
+  [fragShaderLib release];
+  return shaderProgram;`,
+  )
+  writeFileSync(path, source)
+}
+
 function fail(message) {
   console.error(message)
   process.exit(1)
@@ -129,6 +219,7 @@ cpSync(join(sourceDir, 'LICENSE.md'), join(iosDir, 'LICENSE.md'))
 cpSync(join(sourceDir, 'NOTICE.md'), join(iosDir, 'NOTICE.md'))
 patchMetalCommandBuffer(iosDir)
 patchMetalRenderer(iosDir)
+patchMetalShaderLoader(iosDir)
 
 cpSync(join(sourceDir, 'Core/include'), join(androidDir, 'Core/include'), { recursive: true })
 cpSync(join(sourceDir, 'Core/lib/android'), join(androidDir, 'Core/lib'), { recursive: true })

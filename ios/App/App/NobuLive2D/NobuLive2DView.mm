@@ -106,16 +106,34 @@ NSString* CharacterModelFile(NSString* character)
     if ([character caseInsensitiveCompare:@"Asuka"] == NSOrderedSame ||
         [character caseInsensitiveCompare:@"male"] == NSOrderedSame)
     {
-        return @"Asuka.model3.json";
+        return @"Asuka.app.model3.json";
     }
 
-    return @"Alexia.model3.json";
+    return @"Alexia.app.model3.json";
 }
 
 NSString* BundlePath(NSString* directory, const csmChar* relativePath)
 {
     NSString* relative = [NSString stringWithUTF8String:relativePath ?: ""];
     return [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:[directory stringByAppendingPathComponent:relative]];
+}
+
+NSString* MobileTextureFallbackPath(NSString* path)
+{
+    NSArray<NSString*>* highResolutionMarkers = @[@".4096/", @".8192/"];
+    for (NSString* marker in highResolutionMarkers)
+    {
+        if ([path containsString:marker])
+        {
+            NSString* fallback = [path stringByReplacingOccurrencesOfString:marker withString:@".2048/"];
+            if ([[NSFileManager defaultManager] fileExistsAtPath:fallback])
+            {
+                return fallback;
+            }
+        }
+    }
+
+    return nil;
 }
 
 class NobuNativeModel : public CubismUserModel
@@ -129,6 +147,7 @@ public:
     , _opacity(1.0f)
     {
         _textureLoader = [[MTKTextureLoader alloc] initWithDevice:device];
+        _loadedTextures = [[NSMutableArray alloc] init];
         _idParamAngleX = CubismFramework::GetIdManager()->GetId(ParamAngleX);
         _idParamAngleY = CubismFramework::GetIdManager()->GetId(ParamAngleY);
         _idParamAngleZ = CubismFramework::GetIdManager()->GetId(ParamAngleZ);
@@ -140,6 +159,8 @@ public:
     {
         ReleaseMotions();
         ReleaseExpressions();
+        [_loadedTextures removeAllObjects];
+        _loadedTextures = nil;
         delete _modelSetting;
         _modelSetting = NULL;
     }
@@ -423,6 +444,7 @@ private:
             MTKTextureLoaderOptionSRGB: @NO,
             MTKTextureLoaderOptionOrigin: MTKTextureLoaderOriginTopLeft
         };
+        [_loadedTextures removeAllObjects];
 
         for (csmInt32 textureIndex = 0; textureIndex < _modelSetting->GetTextureCount(); textureIndex++)
         {
@@ -433,19 +455,50 @@ private:
             }
 
             NSString* path = BundlePath([NSString stringWithUTF8String:_modelHomeDir.GetRawString()], textureFileName);
-            NSURL* url = [NSURL fileURLWithPath:path];
-            NSError* error = nil;
-            id<MTLTexture> texture = [_textureLoader newTextureWithContentsOfURL:url options:options error:&error];
+            id<MTLTexture> texture = LoadTexture(path, options);
             if (texture == nil)
             {
-                NSLog(@"Nobu Live2D texture failed at %@: %@", path, error.localizedDescription);
+                NSString* fallbackPath = MobileTextureFallbackPath(path);
+                if (fallbackPath.length > 0)
+                {
+                    texture = LoadTexture(fallbackPath, options);
+                    if (texture != nil)
+                    {
+                        NSLog(@"Nobu Live2D texture fallback loaded at %@", fallbackPath);
+                    }
+                }
+            }
+
+            if (texture == nil)
+            {
+                NSLog(@"Nobu Live2D texture unavailable at %@", path);
                 continue;
             }
 
             renderer->BindTexture(textureIndex, texture);
+            [_loadedTextures addObject:texture];
         }
 
         renderer->IsPremultipliedAlpha(false);
+    }
+
+    id<MTLTexture> LoadTexture(NSString* path, NSDictionary* options)
+    {
+        NSData* data = ReadFile(path);
+        if (data.length == 0)
+        {
+            NSLog(@"Nobu Live2D texture data missing at %@", path);
+            return nil;
+        }
+
+        NSError* error = nil;
+        id<MTLTexture> texture = [_textureLoader newTextureWithData:data options:options error:&error];
+        if (texture == nil)
+        {
+            NSLog(@"Nobu Live2D texture failed at %@: %@", path, error.localizedDescription);
+        }
+
+        return texture;
     }
 
     void ReleaseMotions()
@@ -468,6 +521,7 @@ private:
 
     id<MTLDevice> _device;
     MTKTextureLoader* _textureLoader;
+    NSMutableArray<id<MTLTexture>>* _loadedTextures;
     ICubismModelSetting* _modelSetting;
     csmString _modelHomeDir;
     csmFloat32 _userTimeSeconds;
