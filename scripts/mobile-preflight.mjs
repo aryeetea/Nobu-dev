@@ -129,7 +129,7 @@ const iosCompilesOfficialLive2DMetal = xcodeProject.includes('CubismFramework.cp
   xcodeProject.includes('CubismRenderer_Metal.mm in Sources') &&
   xcodeProject.includes('vendor/live2d/ios/Framework/src')
 const iosBuildsLive2DMetalShaders = xcodeProject.includes('Compile Live2D Metal shaders') &&
-  xcodeProject.includes('FrameworkMetallibs/MetalShaders.metallib') &&
+  xcodeProject.includes('FrameworkMetallibs') &&
   xcodeProject.includes('MetalShaders.metal') &&
   xcodeProject.includes('FragShaderSrcBlend') &&
   xcodeProject.includes('CSM_COLOR_BLEND_MODE') &&

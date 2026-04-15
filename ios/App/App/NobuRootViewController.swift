@@ -72,6 +72,31 @@ final class NobuRootViewController: UIViewController {
         print("Nobu Live2D Cubism Core \(coreVersion)")
         print("Nobu Alexia model path: \(alexiaPath)")
         print("Nobu Alexia moc readable: \(alexiaReadable) \(errorMessage ?? "")")
+        printLive2DShaderBundleStatus()
+    }
+
+    private func printLive2DShaderBundleStatus() {
+        guard let shaderDirectory = Bundle.main.resourceURL?.appendingPathComponent("FrameworkMetallibs") else {
+            print("Nobu Live2D shader directory missing")
+            return
+        }
+
+        let shaderFiles = (try? FileManager.default.contentsOfDirectory(
+            at: shaderDirectory,
+            includingPropertiesForKeys: nil
+        )) ?? []
+        let metallibCount = shaderFiles.filter { $0.pathExtension == "metallib" }.count
+        let metalShadersExists = FileManager.default.fileExists(
+            atPath: shaderDirectory.appendingPathComponent("MetalShaders.metallib").path
+        )
+        let blendShaderExists = FileManager.default.fileExists(
+            atPath: shaderDirectory.appendingPathComponent("FragShaderSrcBlendAddOver.metallib").path
+        )
+
+        print("Nobu Live2D shader dir: \(shaderDirectory.path)")
+        print("Nobu Live2D metallib count: \(metallibCount)")
+        print("Nobu Live2D MetalShaders exists: \(metalShadersExists)")
+        print("Nobu Live2D blend shader exists: \(blendShaderExists)")
     }
 
     private func requestMicrophoneReadiness() {

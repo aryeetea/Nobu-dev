@@ -4,14 +4,8 @@ import Capacitor
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
-    var window: UIWindow?
-
+    // UIScene lifecycle handles window management
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        let appWindow = window ?? UIWindow(frame: UIScreen.main.bounds)
-        appWindow.rootViewController = NobuRootViewController()
-        appWindow.makeKeyAndVisible()
-        window = appWindow
-
         return true
     }
 
