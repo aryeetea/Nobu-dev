@@ -157,7 +157,7 @@ public:
         }
 
         _modelHomeDir = [directory stringByAppendingString:@"/"].UTF8String;
-        _modelSetting = new CubismModelSettingJson((const csmByte*)modelData.bytes, modelData.length);
+        _modelSetting = new CubismModelSettingJson((const csmByte*)modelData.bytes, static_cast<csmSizeInt>(modelData.length));
 
         if (!LoadMoc())
         {
@@ -290,7 +290,7 @@ private:
             return false;
         }
 
-        LoadModel((const csmByte*)data.bytes, data.length, true);
+        LoadModel((const csmByte*)data.bytes, static_cast<csmSizeInt>(data.length), true);
         return GetModel() != NULL;
     }
 
@@ -311,7 +311,7 @@ private:
                 continue;
             }
 
-            ACubismMotion* expression = LoadExpression((const csmByte*)data.bytes, data.length, name.GetRawString());
+            ACubismMotion* expression = LoadExpression((const csmByte*)data.bytes, static_cast<csmSizeInt>(data.length), name.GetRawString());
             if (expression != NULL)
             {
                 _expressions[name] = expression;
@@ -330,7 +330,7 @@ private:
         NSData* data = ReadFile(path);
         if (data.length > 0)
         {
-            CubismUserModel::LoadPhysics((const csmByte*)data.bytes, data.length);
+            CubismUserModel::LoadPhysics((const csmByte*)data.bytes, static_cast<csmSizeInt>(data.length));
         }
     }
 
@@ -381,7 +381,7 @@ private:
                 }
 
                 csmString key = csmString(group) + "_" + csmString(std::to_string(motionIndex).c_str());
-                CubismMotion* motion = static_cast<CubismMotion*>(LoadMotion((const csmByte*)data.bytes, data.length, key.GetRawString(), NULL, NULL, _modelSetting, group, motionIndex));
+                CubismMotion* motion = static_cast<CubismMotion*>(LoadMotion((const csmByte*)data.bytes, static_cast<csmSizeInt>(data.length), key.GetRawString(), NULL, NULL, _modelSetting, group, motionIndex));
                 if (motion != NULL)
                 {
                     motion->SetEffectIds(_eyeBlinkIds, _lipSyncIds);
