@@ -115,7 +115,23 @@ NSString* CharacterModelFile(NSString* character)
 NSString* BundlePath(NSString* directory, const csmChar* relativePath)
 {
     NSString* relative = [NSString stringWithUTF8String:relativePath ?: ""];
-    return [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:[directory stringByAppendingPathComponent:relative]];
+    NSString* resourcePath = [[NSBundle mainBundle] resourcePath];
+    NSString* path = [resourcePath stringByAppendingPathComponent:[directory stringByAppendingPathComponent:relative]];
+    if ([[NSFileManager defaultManager] fileExistsAtPath:path])
+    {
+        return path;
+    }
+
+    if ([directory hasPrefix:@"models/"])
+    {
+        NSString* publicPath = [resourcePath stringByAppendingPathComponent:[@"public" stringByAppendingPathComponent:[directory stringByAppendingPathComponent:relative]]];
+        if ([[NSFileManager defaultManager] fileExistsAtPath:publicPath])
+        {
+            return publicPath;
+        }
+    }
+
+    return path;
 }
 
 NSString* MobileTextureFallbackPath(NSString* path)

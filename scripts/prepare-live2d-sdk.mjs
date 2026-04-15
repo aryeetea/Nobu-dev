@@ -180,6 +180,68 @@ function patchMetalShaderLoader(sdkDir) {
   writeFileSync(path, source)
 }
 
+function patchMetalBlendShaderFallback(sdkDir) {
+  const path = join(sdkDir, 'Framework/src/Rendering/Metal/CubismShader_Metal.mm')
+  if (!existsSync(path)) {
+    return
+  }
+
+  let source = readFileSync(path, 'utf8')
+  source = source.replace(
+    `void CubismShader_Metal::GenerateBlendShader(CubismShaderSet* shaderSet, const csmString& vertShaderFileName, const csmString& fragShaderFileName, const csmString& vertShaderSrc, const csmString& fragShaderSrc, id<MTLDevice> device)
+{
+    shaderSet->ShaderProgram = LoadShaderProgramFromFile(vertShaderFileName,
+                                                         fragShaderFileName,
+                                                         vertShaderFileName,
+                                                         fragShaderSrc,
+                                                         device);
+    if (shaderSet->ShaderProgram == NULL)
+    {
+        return;
+    }
+    shaderSet->RenderPipelineState = MakeRenderPipelineState(device, shaderSet->ShaderProgram, 10);
+
+    shaderSet->DepthStencilState = MakeDepthStencilState(device);
+}`,
+    `void CubismShader_Metal::GenerateBlendShader(CubismShaderSet* shaderSet, const csmString& vertShaderFileName, const csmString& fragShaderFileName, const csmString& vertShaderSrc, const csmString& fragShaderSrc, id<MTLDevice> device)
+{
+    CubismShaderSet* fallbackShaderSet = _shaderSets[ShaderNames_Normal];
+    const csmBool masked = vertShaderFileName == csmString("VertShaderSrcMaskedBlend");
+    const csmBool inverted = fragShaderSrc == csmString("FragShaderSrcMaskInvertedBlend") ||
+                             fragShaderSrc == csmString("FragShaderSrcMaskInvertedPremultipliedAlphaBlend");
+    const csmBool premultiplied = fragShaderSrc == csmString("FragShaderSrcPremultipliedAlphaBlend") ||
+                                  fragShaderSrc == csmString("FragShaderSrcMaskPremultipliedAlphaBlend") ||
+                                  fragShaderSrc == csmString("FragShaderSrcMaskInvertedPremultipliedAlphaBlend");
+
+    if (masked && inverted && premultiplied)
+    {
+        fallbackShaderSet = _shaderSets[ShaderNames_NormalMaskedInvertedPremultipliedAlpha];
+    }
+    else if (masked && inverted)
+    {
+        fallbackShaderSet = _shaderSets[ShaderNames_NormalMaskedInverted];
+    }
+    else if (masked && premultiplied)
+    {
+        fallbackShaderSet = _shaderSets[ShaderNames_NormalMaskedPremultipliedAlpha];
+    }
+    else if (masked)
+    {
+        fallbackShaderSet = _shaderSets[ShaderNames_NormalMasked];
+    }
+    else if (premultiplied)
+    {
+        fallbackShaderSet = _shaderSets[ShaderNames_NormalPremultipliedAlpha];
+    }
+
+    shaderSet->ShaderProgram = fallbackShaderSet->ShaderProgram;
+    shaderSet->RenderPipelineState = fallbackShaderSet->RenderPipelineState;
+    shaderSet->DepthStencilState = fallbackShaderSet->DepthStencilState;
+}`,
+  )
+  writeFileSync(path, source)
+}
+
 function fail(message) {
   console.error(message)
   process.exit(1)
@@ -220,6 +282,7 @@ cpSync(join(sourceDir, 'NOTICE.md'), join(iosDir, 'NOTICE.md'))
 patchMetalCommandBuffer(iosDir)
 patchMetalRenderer(iosDir)
 patchMetalShaderLoader(iosDir)
+patchMetalBlendShaderFallback(iosDir)
 
 cpSync(join(sourceDir, 'Core/include'), join(androidDir, 'Core/include'), { recursive: true })
 cpSync(join(sourceDir, 'Core/lib/android'), join(androidDir, 'Core/lib'), { recursive: true })

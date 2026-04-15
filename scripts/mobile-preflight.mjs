@@ -150,7 +150,11 @@ const iosLive2DReleasesShaderLibraries = prepareLive2DSdk.includes('[vertShaderL
   prepareLive2DSdk.includes('[fragShaderLib release]')
 const iosLive2DDataTextureLoader = nativeLive2DView.includes('newTextureWithData') &&
   nativeLive2DView.includes('MobileTextureFallbackPath') &&
-  nativeLive2DView.includes('_loadedTextures')
+  nativeLive2DView.includes('_loadedTextures') &&
+  nativeLive2DView.includes('@"public" stringByAppendingPathComponent')
+const iosLive2DBlendFallback = prepareLive2DSdk.includes('patchMetalBlendShaderFallback') &&
+  prepareLive2DSdk.includes('ShaderNames_NormalMaskedInvertedPremultipliedAlpha') &&
+  prepareLive2DSdk.includes('fallbackShaderSet->RenderPipelineState')
 mark(iosBundlesModels, 'iOS bundles original Live2D model folder')
 mark(iosLinksLive2DCore, 'iOS links official Live2D Cubism Core')
 mark(iosUsesBridgeHeader, 'iOS exposes Live2D bridge to Swift')
@@ -162,11 +166,12 @@ mark(iosLive2DZeroBufferGuard, 'iOS patches Live2D zero-length Metal buffers')
 mark(iosLive2DUrlShaderLoader, 'iOS loads Live2D shader libraries by URL')
 mark(iosLive2DReleasesShaderLibraries, 'iOS releases temporary Live2D shader libraries')
 mark(iosLive2DDataTextureLoader, 'iOS loads and retains Live2D textures from bundled data')
+mark(iosLive2DBlendFallback, 'iOS avoids opening every Live2D blend shader at startup')
 failed ||= !iosBundlesModels || !iosLinksLive2DCore || !iosUsesBridgeHeader ||
   !iosCompilesNativeLive2DView || !iosCompilesOfficialLive2DMetal ||
   !iosBuildsLive2DMetalShaders || !iosLive2DDepthTexture || !iosLive2DZeroBufferGuard ||
   !iosLive2DUrlShaderLoader || !iosLive2DReleasesShaderLibraries ||
-  !iosLive2DDataTextureLoader
+  !iosLive2DDataTextureLoader || !iosLive2DBlendFallback
 
 const hasPublicApiKey = /^\s*NEXT_PUBLIC_.*(?:API_KEY|SECRET|TOKEN)\s*=/m.test(envLocal)
 if (hasPublicApiKey) {
