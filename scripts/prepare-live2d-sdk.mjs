@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 
@@ -8,6 +8,46 @@ const extractRoot = join(root, 'vendor/live2d/sdk-source')
 const sourceDir = join(extractRoot, basename(zipPath, '.zip'))
 const iosDir = join(root, 'vendor/live2d/ios')
 const androidDir = join(root, 'vendor/live2d/android')
+
+function patchMetalCommandBuffer(sdkDir) {
+  const path = join(sdkDir, 'Framework/src/Rendering/Metal/CubismCommandBuffer_Metal.mm')
+  if (!existsSync(path)) {
+    return
+  }
+
+  let source = readFileSync(path, 'utf8')
+  source = source.replace(
+    `    _vertices = [device newBufferWithLength:_vbStride * count
+                                                options:MTLResourceStorageModeShared];
+
+    _uvs = [device newBufferWithLength:_vbStride * count
+                                                options:MTLResourceStorageModeShared];`,
+    `    csmSizeInt bufferLength = _vbStride * count;
+    if (bufferLength == 0)
+    {
+        bufferLength = 1;
+    }
+
+    _vertices = [device newBufferWithLength:bufferLength
+                                                options:MTLResourceStorageModeShared];
+
+    _uvs = [device newBufferWithLength:bufferLength
+                                                options:MTLResourceStorageModeShared];`,
+  )
+  source = source.replace(
+    `    _indices = [device newBufferWithLength:sizeof(csmInt16) * _ibCount
+                                                options:MTLResourceStorageModeShared];`,
+    `    csmSizeInt bufferLength = sizeof(csmInt16) * _ibCount;
+    if (bufferLength == 0)
+    {
+        bufferLength = sizeof(csmInt16);
+    }
+
+    _indices = [device newBufferWithLength:bufferLength
+                                                options:MTLResourceStorageModeShared];`,
+  )
+  writeFileSync(path, source)
+}
 
 function fail(message) {
   console.error(message)
@@ -46,6 +86,7 @@ cpSync(join(sourceDir, 'Framework'), join(iosDir, 'Framework'), { recursive: tru
 cpSync(join(sourceDir, 'Samples/Metal'), join(iosDir, 'Samples/Metal'), { recursive: true })
 cpSync(join(sourceDir, 'LICENSE.md'), join(iosDir, 'LICENSE.md'))
 cpSync(join(sourceDir, 'NOTICE.md'), join(iosDir, 'NOTICE.md'))
+patchMetalCommandBuffer(iosDir)
 
 cpSync(join(sourceDir, 'Core/include'), join(androidDir, 'Core/include'), { recursive: true })
 cpSync(join(sourceDir, 'Core/lib/android'), join(androidDir, 'Core/lib'), { recursive: true })

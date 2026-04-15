@@ -489,6 +489,7 @@ private:
 @interface NobuLive2DView ()
 @property (nonatomic, strong) id<MTLDevice> device;
 @property (nonatomic, strong) id<MTLCommandQueue> commandQueue;
+@property (nonatomic, strong) id<MTLTexture> depthTexture;
 @property (nonatomic, strong) CADisplayLink *displayLink;
 @property (nonatomic, copy) NSString *character;
 @end
@@ -543,11 +544,36 @@ private:
     CGFloat scale = self.window.screen.nativeScale ?: UIScreen.mainScreen.nativeScale;
     CGSize drawableSize = CGSizeMake(MAX(self.bounds.size.width * scale, 1), MAX(self.bounds.size.height * scale, 1));
     metalLayer.drawableSize = drawableSize;
+    [self resizeDepthTexture:drawableSize];
 
     if (_model != NULL)
     {
         _model->Resize(drawableSize);
     }
+}
+
+- (void)resizeDepthTexture:(CGSize)drawableSize
+{
+    if (_device == nil || drawableSize.width <= 0 || drawableSize.height <= 0)
+    {
+        self.depthTexture = nil;
+        return;
+    }
+
+    if (_depthTexture != nil &&
+        _depthTexture.width == (NSUInteger)drawableSize.width &&
+        _depthTexture.height == (NSUInteger)drawableSize.height)
+    {
+        return;
+    }
+
+    MTLTextureDescriptor* descriptor = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float
+                                                                                           width:(NSUInteger)drawableSize.width
+                                                                                          height:(NSUInteger)drawableSize.height
+                                                                                       mipmapped:NO];
+    descriptor.usage = MTLTextureUsageRenderTarget;
+    descriptor.storageMode = MTLStorageModePrivate;
+    self.depthTexture = [_device newTextureWithDescriptor:descriptor];
 }
 
 - (void)setCharacter:(NSString *)character
@@ -655,11 +681,22 @@ private:
         return;
     }
 
+    if (_depthTexture == nil ||
+        _depthTexture.width != (NSUInteger)metalLayer.drawableSize.width ||
+        _depthTexture.height != (NSUInteger)metalLayer.drawableSize.height)
+    {
+        [self resizeDepthTexture:metalLayer.drawableSize];
+    }
+
     MTLRenderPassDescriptor* passDescriptor = [MTLRenderPassDescriptor renderPassDescriptor];
     passDescriptor.colorAttachments[0].texture = drawable.texture;
     passDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
     passDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
     passDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0);
+    passDescriptor.depthAttachment.texture = _depthTexture;
+    passDescriptor.depthAttachment.loadAction = MTLLoadActionClear;
+    passDescriptor.depthAttachment.storeAction = MTLStoreActionDontCare;
+    passDescriptor.depthAttachment.clearDepth = 1.0;
 
     _model->Update();
 

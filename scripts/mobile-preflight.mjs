@@ -91,6 +91,8 @@ const iosInfo = readFileSync(join(root, 'ios/App/App/Info.plist'), 'utf8')
 const androidManifest = readFileSync(join(root, 'android/app/src/main/AndroidManifest.xml'), 'utf8')
 const live2dModels = readFileSync(join(root, 'app/lib/live2d-models.ts'), 'utf8')
 const xcodeProject = readFileSync(join(root, 'ios/App/App.xcodeproj/project.pbxproj'), 'utf8')
+const nativeLive2DView = readFileSync(join(root, 'ios/App/App/NobuLive2D/NobuLive2DView.mm'), 'utf8')
+const prepareLive2DSdk = readFileSync(join(root, 'scripts/prepare-live2d-sdk.mjs'), 'utf8')
 const envLocalPath = join(root, '.env.local')
 const envLocal = existsSync(envLocalPath) ? readFileSync(envLocalPath, 'utf8') : ''
 
@@ -129,14 +131,21 @@ const iosCompilesOfficialLive2DMetal = xcodeProject.includes('CubismFramework.cp
 const iosBuildsLive2DMetalShaders = xcodeProject.includes('Compile Live2D Metal shaders') &&
   xcodeProject.includes('FrameworkMetallibs/MetalShaders.metallib') &&
   xcodeProject.includes('MetalShaders.metal')
+const iosLive2DDepthTexture = nativeLive2DView.includes('MTLPixelFormatDepth32Float') &&
+  nativeLive2DView.includes('passDescriptor.depthAttachment.texture')
+const iosLive2DZeroBufferGuard = prepareLive2DSdk.includes('patchMetalCommandBuffer') &&
+  prepareLive2DSdk.includes('bufferLength == 0')
 mark(iosBundlesModels, 'iOS bundles original Live2D model folder')
 mark(iosLinksLive2DCore, 'iOS links official Live2D Cubism Core')
 mark(iosUsesBridgeHeader, 'iOS exposes Live2D bridge to Swift')
 mark(iosCompilesNativeLive2DView, 'iOS compiles native Live2D Metal view')
 mark(iosCompilesOfficialLive2DMetal, 'iOS compiles official Live2D Framework Metal renderer')
 mark(iosBuildsLive2DMetalShaders, 'iOS builds Live2D Metal shader library')
+mark(iosLive2DDepthTexture, 'iOS provides Live2D Metal depth texture')
+mark(iosLive2DZeroBufferGuard, 'iOS patches Live2D zero-length Metal buffers')
 failed ||= !iosBundlesModels || !iosLinksLive2DCore || !iosUsesBridgeHeader ||
-  !iosCompilesNativeLive2DView || !iosCompilesOfficialLive2DMetal || !iosBuildsLive2DMetalShaders
+  !iosCompilesNativeLive2DView || !iosCompilesOfficialLive2DMetal ||
+  !iosBuildsLive2DMetalShaders || !iosLive2DDepthTexture || !iosLive2DZeroBufferGuard
 
 const hasPublicApiKey = /^\s*NEXT_PUBLIC_.*(?:API_KEY|SECRET|TOKEN)\s*=/m.test(envLocal)
 if (hasPublicApiKey) {
