@@ -126,13 +126,17 @@ const iosCompilesNativeLive2DView = xcodeProject.includes('NobuLive2DView.mm in 
 const iosCompilesOfficialLive2DMetal = xcodeProject.includes('CubismFramework.cpp in Sources') &&
   xcodeProject.includes('CubismRenderer_Metal.mm in Sources') &&
   xcodeProject.includes('vendor/live2d/ios/Framework/src')
+const iosBuildsLive2DMetalShaders = xcodeProject.includes('Compile Live2D Metal shaders') &&
+  xcodeProject.includes('FrameworkMetallibs/MetalShaders.metallib') &&
+  xcodeProject.includes('MetalShaders.metal')
 mark(iosBundlesModels, 'iOS bundles original Live2D model folder')
 mark(iosLinksLive2DCore, 'iOS links official Live2D Cubism Core')
 mark(iosUsesBridgeHeader, 'iOS exposes Live2D bridge to Swift')
 mark(iosCompilesNativeLive2DView, 'iOS compiles native Live2D Metal view')
 mark(iosCompilesOfficialLive2DMetal, 'iOS compiles official Live2D Framework Metal renderer')
+mark(iosBuildsLive2DMetalShaders, 'iOS builds Live2D Metal shader library')
 failed ||= !iosBundlesModels || !iosLinksLive2DCore || !iosUsesBridgeHeader ||
-  !iosCompilesNativeLive2DView || !iosCompilesOfficialLive2DMetal
+  !iosCompilesNativeLive2DView || !iosCompilesOfficialLive2DMetal || !iosBuildsLive2DMetalShaders
 
 const hasPublicApiKey = /^\s*NEXT_PUBLIC_.*(?:API_KEY|SECRET|TOKEN)\s*=/m.test(envLocal)
 if (hasPublicApiKey) {

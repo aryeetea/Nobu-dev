@@ -281,6 +281,7 @@
 				504EC3001FED79650016851F /* Sources */,
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
+				A1B2C3D4E5F6000000000015 /* Compile Live2D Metal shaders */,
 			);
 			buildRules = (
 			);
@@ -347,6 +348,25 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		A1B2C3D4E5F6000000000015 /* Compile Live2D Metal shaders */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/../../vendor/live2d/ios/Framework/src/Rendering/Metal/Shaders/MetalShaders.metal",
+			);
+			name = "Compile Live2D Metal shaders";
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/FrameworkMetallibs/MetalShaders.metallib",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nSHADER_DIR=\"$SRCROOT/../../vendor/live2d/ios/Framework/src/Rendering/Metal/Shaders\"\nOUTPUT_DIR=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/FrameworkMetallibs\"\nTEMP_DIR=\"$DERIVED_FILE_DIR/Live2DMetalShaders\"\nmkdir -p \"$OUTPUT_DIR\" \"$TEMP_DIR\"\nif ! xcrun -sdk \"$SDK_NAME\" metal -I \"$SHADER_DIR\" -c \"$SHADER_DIR/MetalShaders.metal\" -o \"$TEMP_DIR/MetalShaders.air\"; then\n  echo \"error: Live2D Metal shader compile failed. In Xcode, install the Metal Toolchain component, then build again.\"\n  exit 1\nfi\nxcrun -sdk \"$SDK_NAME\" metallib \"$TEMP_DIR/MetalShaders.air\" -o \"$OUTPUT_DIR/MetalShaders.metallib\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		504EC3001FED79650016851F /* Sources */ = {

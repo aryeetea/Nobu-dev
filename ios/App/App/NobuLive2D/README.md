@@ -6,6 +6,7 @@ Current status:
 
 - The app links the official Live2D Cubism Core static library from `vendor/live2d/ios/Core`.
 - The app compiles the official Live2D Framework common sources and Metal renderer from `vendor/live2d/ios/Framework/src`.
+- The Xcode target has a build phase that creates `FrameworkMetallibs/MetalShaders.metallib` from the official Live2D Metal shader source.
 - The app bundles the original `public/models` folder as an iOS resource folder.
 - `NobuLive2DBridge` exposes Cubism Core readiness and bundled model checks to Swift.
 - `NobuRootViewController` calls the bridge at launch and logs Core/model readiness.
