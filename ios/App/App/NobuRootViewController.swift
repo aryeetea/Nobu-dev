@@ -2,7 +2,7 @@ import AVFoundation
 import SceneKit
 import UIKit
 
-final class NobuRootViewController: UIViewController, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegate {
+final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
     private let roomEnvironmentView = NobuRoomEnvironmentView()
     private let ambientSceneView = SCNView()
     private let ambientScene = SCNScene()
@@ -12,7 +12,6 @@ final class NobuRootViewController: UIViewController, AVSpeechSynthesizerDelegat
     private let settingsScrimButton = UIButton(type: .custom)
     private let settingsPanelView = UIView()
     private let settingsStackView = UIStackView()
-    private let openingSpeechSynthesizer = AVSpeechSynthesizer()
     private let speechEndpointURL = URL(string: "https://heynobu.netlify.app/api/speech")!
     private var speechRequestTask: URLSessionDataTask?
     private var speechAudioPlayer: AVAudioPlayer?
@@ -129,7 +128,6 @@ final class NobuRootViewController: UIViewController, AVSpeechSynthesizerDelegat
         configureRoomEnvironment()
         configureSettingsPanel()
         prepareLive2D()
-        openingSpeechSynthesizer.delegate = self
     }
 
     override func viewDidLayoutSubviews() {
@@ -609,7 +607,7 @@ final class NobuRootViewController: UIViewController, AVSpeechSynthesizerDelegat
         ]
 
         guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
-            speakWithSystemVoice(text)
+            print("Nobu exact voice request could not be encoded.")
             return
         }
 
@@ -625,9 +623,6 @@ final class NobuRootViewController: UIViewController, AVSpeechSynthesizerDelegat
                 }
 
                 print("Nobu exact voice request warning: \(error.localizedDescription)")
-                DispatchQueue.main.async {
-                    self.speakWithSystemVoice(text)
-                }
                 return
             }
 
@@ -638,15 +633,12 @@ final class NobuRootViewController: UIViewController, AVSpeechSynthesizerDelegat
                 !data.isEmpty
             else {
                 let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
-                print("Nobu exact voice unavailable, falling back to Apple voice. Status: \(statusCode)")
-                DispatchQueue.main.async {
-                    self.speakWithSystemVoice(text)
-                }
+                print("Nobu exact voice unavailable. No system voice fallback. Status: \(statusCode)")
                 return
             }
 
             DispatchQueue.main.async {
-                self.playNobuVoiceAudio(data, fallbackText: text)
+                self.playNobuVoiceAudio(data)
             }
         }
         speechRequestTask?.resume()
@@ -657,11 +649,10 @@ final class NobuRootViewController: UIViewController, AVSpeechSynthesizerDelegat
         speechRequestTask = nil
         speechAudioPlayer?.stop()
         speechAudioPlayer = nil
-        openingSpeechSynthesizer.stopSpeaking(at: .immediate)
         stopSpeechMouthMotion()
     }
 
-    private func playNobuVoiceAudio(_ data: Data, fallbackText: String) {
+    private func playNobuVoiceAudio(_ data: Data) {
         do {
             let player = try AVAudioPlayer(data: data)
             player.delegate = self
@@ -672,62 +663,11 @@ final class NobuRootViewController: UIViewController, AVSpeechSynthesizerDelegat
             player.play()
         } catch {
             print("Nobu exact voice playback warning: \(error.localizedDescription)")
-            speakWithSystemVoice(fallbackText)
         }
-    }
-
-    private func speakWithSystemVoice(_ text: String) {
-        openingSpeechSynthesizer.stopSpeaking(at: .immediate)
-        let utterance = AVSpeechUtterance(string: text)
-        utterance.rate = AVSpeechUtteranceDefaultSpeechRate * (currentCharacterUsesMaleVoice ? 0.88 : 0.92)
-        utterance.pitchMultiplier = currentCharacterUsesMaleVoice ? 0.88 : 1.04
-        utterance.volume = 0.92
-        utterance.voice = speechVoice(forMaleCharacter: currentCharacterUsesMaleVoice)
-
-        startSpeechMouthMotion()
-        openingSpeechSynthesizer.speak(utterance)
     }
 
     private var currentCharacterUsesMaleVoice: Bool {
         currentCharacter == "Asuka"
-    }
-
-    private func speechVoice(forMaleCharacter usesMaleVoice: Bool) -> AVSpeechSynthesisVoice? {
-        let targetGender: AVSpeechSynthesisVoiceGender = usesMaleVoice ? .male : .female
-        let englishVoices = AVSpeechSynthesisVoice.speechVoices().filter { voice in
-            voice.language.hasPrefix("en")
-        }
-        let preferredNames = usesMaleVoice
-            ? ["Nathan", "Evan", "Tom", "Aaron", "Fred"]
-            : ["Samantha", "Ava", "Zoe", "Allison", "Susan"]
-
-        for preferredName in preferredNames {
-            if let matchingVoice = englishVoices.first(where: { voice in
-                voice.language == "en-US"
-                    && voice.gender == targetGender
-                    && voice.name.localizedCaseInsensitiveContains(preferredName)
-            }) {
-                return matchingVoice
-            }
-        }
-
-        if let matchingVoice = englishVoices.first(where: { $0.gender == targetGender && $0.language == "en-US" }) {
-            return matchingVoice
-        }
-
-        if let matchingVoice = englishVoices.first(where: { $0.gender == targetGender }) {
-            return matchingVoice
-        }
-
-        return AVSpeechSynthesisVoice(language: "en-US")
-    }
-
-    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        stopSpeechMouthMotion()
-    }
-
-    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
-        stopSpeechMouthMotion()
     }
 
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
