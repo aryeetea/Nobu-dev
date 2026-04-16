@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import { useState } from 'react'
 import type { NobuRoomAction } from './NobuCharacter'
 
@@ -10,11 +9,6 @@ type Props = {
 }
 
 type RoomArea = 'bed' | 'desk' | 'chair' | 'window' | 'lights'
-
-const roomImages = {
-  female: '/rooms/nobu-room-Alexia.png',
-  male: '/rooms/nobu-room-Asuka.png',
-}
 
 const roomThemes = {
   female: {
@@ -55,7 +49,6 @@ const roomThemes = {
 
 export default function NobuRoom({ character, onRoomAction }: Props) {
   const theme = roomThemes[character]
-  const roomImage = roomImages[character]
   const [activeArea, setActiveArea] = useState<RoomArea | null>(null)
 
   function activateArea(area: RoomArea) {
@@ -71,7 +64,6 @@ export default function NobuRoom({ character, onRoomAction }: Props) {
       aria-label="Anime studio apartment"
       className={[
         'nobu-room',
-        'photo-room',
         activeArea ? `room-active-${activeArea}` : '',
       ].join(' ')}
     >
@@ -88,30 +80,6 @@ export default function NobuRoom({ character, onRoomAction }: Props) {
           display: block;
           height: 100%;
           width: 100%;
-        }
-
-        .photo-room-art {
-          display: none;
-        }
-
-        .nobu-room.photo-room {
-          background: #f2dfd8;
-        }
-
-        .nobu-room.photo-room .room-desktop,
-        .nobu-room.photo-room .room-mobile {
-          display: none;
-        }
-
-        .nobu-room.photo-room .photo-room-art {
-          display: block;
-          height: 100%;
-          inset: 0;
-          object-fit: cover;
-          object-position: center center;
-          position: absolute;
-          width: 100%;
-          z-index: 0;
         }
 
         .room-atmosphere {
@@ -280,10 +248,6 @@ export default function NobuRoom({ character, onRoomAction }: Props) {
             display: block;
           }
 
-          .nobu-room.photo-room .photo-room-art {
-            object-position: center center;
-          }
-
           .hotspot-bed { bottom: 15%; height: 26%; left: 0; width: 48%; }
           .hotspot-desk { bottom: 32%; height: 24%; left: 38%; width: 38%; }
           .hotspot-chair { bottom: 24%; height: 26%; left: 30%; width: 22%; }
@@ -292,19 +256,6 @@ export default function NobuRoom({ character, onRoomAction }: Props) {
         }
       `}</style>
 
-      <Image
-        alt=""
-        aria-hidden="true"
-        className="photo-room-art"
-        decoding="async"
-        draggable={false}
-        fill
-        fetchPriority="high"
-        loading="eager"
-        sizes="100vw"
-        src={roomImage}
-        unoptimized
-      />
       <div aria-hidden="true" className="room-atmosphere" />
       <div className="room-hotspots">
         <button
