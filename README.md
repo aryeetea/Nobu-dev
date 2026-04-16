@@ -19,6 +19,6 @@ npm run lint
 npm run build
 ```
 
-## Mobile Apps
+## PWA
 
-Nobu includes Capacitor shells for iPhone and Android. See `MOBILE_APP.md`.
+Nobu is currently focused on the web/PWA experience. The native shells are paused so the main product can move faster.

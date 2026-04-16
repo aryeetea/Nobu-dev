@@ -40,8 +40,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-# Licensed Live2D SDK files are local-only unless the license review says otherwise.
-/vendor/live2d/ios/
-/vendor/live2d/android/
-/vendor/live2d/sdk-source/

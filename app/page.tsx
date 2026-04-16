@@ -1,7 +1,6 @@
 'use client'
 
 import { useConversation } from '@elevenlabs/react'
-import { Capacitor } from '@capacitor/core'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
@@ -133,7 +132,6 @@ export default function Home() {
   >(null)
   const [autoModelToggles, setAutoModelToggles] = useState<Record<string, boolean>>({})
   const [roomAction, setRoomAction] = useState<NobuRoomAction>('center')
-  const [isNativeApp, setIsNativeApp] = useState(false)
   const [hasMounted, setHasMounted] = useState(false)
   const [introVisible, setIntroVisible] = useState(true)
   const [introExiting, setIntroExiting] = useState(false)
@@ -229,7 +227,6 @@ export default function Home() {
   // No longer need startConversationRef
 
   useEffect(() => {
-    setIsNativeApp(Capacitor.isNativePlatform())
     setHasMounted(true)
   }, [])
 
@@ -433,7 +430,7 @@ export default function Home() {
       <div className={`nobu-stage${status === 'connected' ? ' awake' : ''}`} ref={stageRef}>
         <NobuRoom character={character} onRoomAction={setRoomAction} />
         <div className="character-stage">
-          {hasMounted && !isNativeApp && (
+          {hasMounted && (
             <NobuCharacter
               character={character}
               expressionIndex={autoExpressionIndex}

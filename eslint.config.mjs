@@ -13,8 +13,6 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "public/live2d/**",
-    "public/vendor/**",
-    "vendor/live2d/**",
   ]),
 ]);
 
