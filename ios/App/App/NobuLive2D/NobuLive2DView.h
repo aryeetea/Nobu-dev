@@ -11,6 +11,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setCharacter:(NSString *)character;
 - (void)playExpression:(NSString *)expressionName;
 - (void)playMotionGroup:(NSString *)group index:(NSInteger)index;
+- (void)setLipSyncValue:(CGFloat)value;
 
 @end
 

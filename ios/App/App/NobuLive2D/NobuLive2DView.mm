@@ -161,6 +161,7 @@ public:
     , _userTimeSeconds(0.0f)
     , _motionUpdated(false)
     , _opacity(1.0f)
+    , _lipSyncValue(0.0f)
     {
         _textureLoader = [[MTKTextureLoader alloc] initWithDevice:device];
         _loadedTextures = [[NSMutableArray alloc] init];
@@ -169,6 +170,7 @@ public:
         _idParamAngleZ = CubismFramework::GetIdManager()->GetId(ParamAngleZ);
         _idParamBodyAngleX = CubismFramework::GetIdManager()->GetId(ParamBodyAngleX);
         _idParamBreath = CubismFramework::GetIdManager()->GetId(ParamBreath);
+        _idParamMouthOpenY = CubismFramework::GetIdManager()->GetId(ParamMouthOpenY);
     }
 
     ~NobuNativeModel() override
@@ -250,6 +252,8 @@ public:
             _breath->UpdateParameters(GetModel(), deltaTimeSeconds);
         }
 
+        ApplyLipSync();
+
         if (_physics != NULL)
         {
             _physics->Evaluate(GetModel(), deltaTimeSeconds);
@@ -297,7 +301,7 @@ public:
 
     void StartMotionGroup(NSString* groupName, NSInteger index)
     {
-        if (groupName.length == 0 || index < 0)
+        if (index < 0)
         {
             return;
         }
@@ -309,6 +313,11 @@ public:
             motion->SetEffectIds(_eyeBlinkIds, _lipSyncIds);
             _motionManager->StartMotionPriority(motion, false, 3);
         }
+    }
+
+    void SetLipSyncValue(csmFloat32 value)
+    {
+        _lipSyncValue = fmaxf(0.0f, fminf(value, 1.0f));
     }
 
 private:
@@ -384,6 +393,26 @@ private:
             _eyeBlinkIds.PushBack(_modelSetting->GetEyeBlinkParameterId(i));
         }
     }
+
+    void ApplyLipSync()
+    {
+        if (_lipSyncValue <= 0.001f)
+        {
+            return;
+        }
+
+        if (_lipSyncIds.GetSize() > 0)
+        {
+            for (csmUint32 index = 0; index < _lipSyncIds.GetSize(); ++index)
+            {
+                GetModel()->AddParameterValue(_lipSyncIds[index], _lipSyncValue, 0.85f);
+            }
+            return;
+        }
+
+        GetModel()->AddParameterValue(_idParamMouthOpenY, _lipSyncValue, 0.85f);
+    }
+
 
     void LoadBreath()
     {
@@ -543,6 +572,7 @@ private:
     csmFloat32 _userTimeSeconds;
     csmBool _motionUpdated;
     csmFloat32 _opacity;
+    csmFloat32 _lipSyncValue;
     csmMap<csmString, ACubismMotion*> _expressions;
     csmMap<csmString, ACubismMotion*> _motions;
     csmVector<CubismIdHandle> _eyeBlinkIds;
@@ -552,6 +582,7 @@ private:
     const CubismId* _idParamAngleZ;
     const CubismId* _idParamBodyAngleX;
     const CubismId* _idParamBreath;
+    const CubismId* _idParamMouthOpenY;
 };
 
 } // namespace
@@ -672,6 +703,14 @@ private:
     if (_model != NULL)
     {
         _model->StartMotionGroup(group, index);
+    }
+}
+
+- (void)setLipSyncValue:(CGFloat)value
+{
+    if (_model != NULL)
+    {
+        _model->SetLipSyncValue((csmFloat32)value);
     }
 }
 
