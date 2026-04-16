@@ -1,5 +1,6 @@
 import AVFoundation
 import SceneKit
+import Speech
 import UIKit
 
 final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
@@ -9,14 +10,27 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
     private let characterStage = UIView()
     private let floorShadowView = UIView()
     private let live2DView = NobuLive2DView(character: "Alexia")
+    private let settingsButton = UIButton(type: .system)
     private let settingsScrimButton = UIButton(type: .custom)
     private let settingsPanelView = UIView()
+    private let settingsScrollView = UIScrollView()
     private let settingsStackView = UIStackView()
     private let speechEndpointURL = URL(string: "https://heynobu.netlify.app/api/speech")!
+    private let conversationEndpointURL = URL(string: "https://heynobu.netlify.app/api/conversation")!
+    private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
+    private let audioEngine = AVAudioEngine()
     private var speechRequestTask: URLSessionDataTask?
+    private var conversationRequestTask: URLSessionDataTask?
+    private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
+    private var recognitionTask: SFSpeechRecognitionTask?
+    private var listenRestartWorkItem: DispatchWorkItem?
     private var speechAudioPlayer: AVAudioPlayer?
     private var speechMouthDisplayLink: CADisplayLink?
     private var speechMouthPhase: CGFloat = 0
+    private var isListeningForUser = false
+    private var isSpeechRecognitionAuthorized = false
+    private var resumeListeningAfterCurrentSpeech = false
+    private var latestRecognizedText = ""
     private var currentCharacter = "Alexia"
     private var roomHotspotButtons: [UIButton] = []
     private var activeSceneAnchor = CGPoint.zero
@@ -104,6 +118,9 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
 
     deinit {
         speechRequestTask?.cancel()
+        conversationRequestTask?.cancel()
+        recognitionTask?.cancel()
+        audioEngine.stop()
         speechAudioPlayer?.stop()
         speechMouthDisplayLink?.invalidate()
     }
@@ -127,7 +144,9 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
         configureCharacterStage()
         configureRoomEnvironment()
         configureSettingsPanel()
+        configureSettingsShortcut()
         prepareLive2D()
+        requestSpeechRecognitionReadiness()
     }
 
     override func viewDidLayoutSubviews() {
@@ -345,40 +364,79 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
         settingsPanelView.isHidden = true
         view.addSubview(settingsPanelView)
 
+        settingsScrollView.translatesAutoresizingMaskIntoConstraints = false
+        settingsScrollView.alwaysBounceVertical = false
+        settingsScrollView.showsVerticalScrollIndicator = false
+        settingsPanelView.addSubview(settingsScrollView)
+
         settingsStackView.translatesAutoresizingMaskIntoConstraints = false
         settingsStackView.axis = .vertical
         settingsStackView.alignment = .fill
         settingsStackView.spacing = 10
-        settingsPanelView.addSubview(settingsStackView)
+        settingsScrollView.addSubview(settingsStackView)
 
         let titleLabel = UILabel()
-        titleLabel.text = "Nobu settings"
-        titleLabel.font = UIFont.systemFont(ofSize: 22, weight: .bold)
+        titleLabel.text = "Nobu"
+        titleLabel.font = UIFont.systemFont(ofSize: 24, weight: .bold)
         titleLabel.textColor = UIColor(red: 0.16, green: 0.18, blue: 0.20, alpha: 1)
 
         let detailLabel = UILabel()
-        detailLabel.text = "Looks and voices stay paired."
+        detailLabel.text = "A personal voice AI for memory, notes, planning, organization, reflection, shopping, style, and everyday decisions. ScanFit turns on when you ask about outfits, sizing, shopping, measurements, creator looks, or body changes."
         detailLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
         detailLabel.textColor = UIColor(red: 0.40, green: 0.43, blue: 0.46, alpha: 1)
+        detailLabel.numberOfLines = 0
+        detailLabel.lineBreakMode = .byWordWrapping
 
         settingsStackView.addArrangedSubview(titleLabel)
         settingsStackView.addArrangedSubview(detailLabel)
-        settingsStackView.setCustomSpacing(16, after: detailLabel)
-        settingsStackView.addArrangedSubview(makeSettingsButton(title: "Feminine look, feminine voice") { [weak self] in
+        settingsStackView.setCustomSpacing(18, after: detailLabel)
+
+        settingsStackView.addArrangedSubview(makeSettingsSectionLabel("Character & voice"))
+        settingsStackView.addArrangedSubview(makeSettingsButton(
+            title: "Use feminine Nobu",
+            subtitle: "Alexia model paired with the feminine ElevenLabs voice."
+        ) { [weak self] in
             self?.closeSettingsPanel()
             self?.selectCharacter("Alexia", shouldSpeak: true)
         })
-        settingsStackView.addArrangedSubview(makeSettingsButton(title: "Masculine look, masculine voice") { [weak self] in
+        settingsStackView.addArrangedSubview(makeSettingsButton(
+            title: "Use masculine Nobu",
+            subtitle: "Asuka model paired with the masculine ElevenLabs voice."
+        ) { [weak self] in
             self?.closeSettingsPanel()
             self?.selectCharacter("Asuka", shouldSpeak: true)
         })
-        settingsStackView.addArrangedSubview(makeSettingsButton(title: "Next wardrobe style") { [weak self] in
+        settingsStackView.addArrangedSubview(makeSettingsButton(
+            title: "Next wardrobe style",
+            subtitle: "Cycles the current character's available expressions or toggles."
+        ) { [weak self] in
             self?.cycleCharacterStyle()
         })
-        settingsStackView.addArrangedSubview(makeSettingsButton(title: "Voice test") { [weak self] in
-            self?.speakCharacterLine("Hi, I'm Nobu.")
+
+        settingsStackView.addArrangedSubview(makeSettingsSectionLabel("Conversation"))
+        settingsStackView.addArrangedSubview(makeSettingsText("Nobu listens with iOS speech recognition, sends your words to the ElevenLabs agent, then speaks back with the paired Nobu voice."))
+        settingsStackView.addArrangedSubview(makeSettingsButton(
+            title: "Start listening",
+            subtitle: "Use this if you want to manually wake the conversation loop."
+        ) { [weak self] in
+            self?.closeSettingsPanel()
+            self?.beginListeningForUser()
         })
-        settingsStackView.addArrangedSubview(makeSettingsButton(title: "Close") { [weak self] in
+        settingsStackView.addArrangedSubview(makeSettingsButton(
+            title: "Exact voice test",
+            subtitle: "Tests the selected ElevenLabs Nobu voice."
+        ) { [weak self] in
+            self?.speakCharacterLine("Hi, I'm Nobu.", resumesListening: false)
+        })
+
+        settingsStackView.addArrangedSubview(makeSettingsSectionLabel("Background"))
+        settingsStackView.addArrangedSubview(makeSettingsText("The window scene changes by device time: day, evening, or night. It stays lightweight so the Live2D character has room to breathe."))
+
+        settingsStackView.addArrangedSubview(makeSettingsSectionLabel("Quick gestures"))
+        settingsStackView.addArrangedSubview(makeSettingsText("Double tap resets Nobu's position. Triple tap switches feminine and masculine Nobu. Long press opens this settings sheet."))
+
+        settingsStackView.setCustomSpacing(16, after: settingsStackView.arrangedSubviews.last ?? detailLabel)
+        settingsStackView.addArrangedSubview(makeSettingsButton(title: "Close", subtitle: nil) { [weak self] in
             self?.closeSettingsPanel()
         })
 
@@ -391,29 +449,97 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
             settingsPanelView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 18),
             settingsPanelView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -18),
             settingsPanelView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -18),
+            settingsPanelView.heightAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.heightAnchor, multiplier: 0.76),
 
-            settingsStackView.leadingAnchor.constraint(equalTo: settingsPanelView.leadingAnchor, constant: 18),
-            settingsStackView.trailingAnchor.constraint(equalTo: settingsPanelView.trailingAnchor, constant: -18),
-            settingsStackView.topAnchor.constraint(equalTo: settingsPanelView.topAnchor, constant: 18),
-            settingsStackView.bottomAnchor.constraint(equalTo: settingsPanelView.bottomAnchor, constant: -18)
+            settingsScrollView.leadingAnchor.constraint(equalTo: settingsPanelView.leadingAnchor),
+            settingsScrollView.trailingAnchor.constraint(equalTo: settingsPanelView.trailingAnchor),
+            settingsScrollView.topAnchor.constraint(equalTo: settingsPanelView.topAnchor),
+            settingsScrollView.bottomAnchor.constraint(equalTo: settingsPanelView.bottomAnchor),
+
+            settingsStackView.leadingAnchor.constraint(equalTo: settingsScrollView.contentLayoutGuide.leadingAnchor, constant: 18),
+            settingsStackView.trailingAnchor.constraint(equalTo: settingsScrollView.contentLayoutGuide.trailingAnchor, constant: -18),
+            settingsStackView.topAnchor.constraint(equalTo: settingsScrollView.contentLayoutGuide.topAnchor, constant: 18),
+            settingsStackView.bottomAnchor.constraint(equalTo: settingsScrollView.contentLayoutGuide.bottomAnchor, constant: -18),
+            settingsStackView.widthAnchor.constraint(equalTo: settingsScrollView.frameLayoutGuide.widthAnchor, constant: -36)
         ])
     }
 
-    private func makeSettingsButton(title: String, action: @escaping () -> Void) -> UIButton {
-        let button = UIButton(type: .system)
-        var attributes = AttributeContainer()
-        attributes.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
+    private func configureSettingsShortcut() {
+        settingsButton.translatesAutoresizingMaskIntoConstraints = false
+        settingsButton.accessibilityLabel = "Open Nobu settings"
+        settingsButton.layer.shadowColor = UIColor.black.cgColor
+        settingsButton.layer.shadowOpacity = 0.12
+        settingsButton.layer.shadowRadius = 10
+        settingsButton.layer.shadowOffset = CGSize(width: 0, height: 4)
 
         var configuration = UIButton.Configuration.filled()
-        configuration.attributedTitle = AttributedString(title, attributes: attributes)
+        configuration.image = UIImage(systemName: "slider.horizontal.3")
+        configuration.preferredSymbolConfigurationForImage = UIImage.SymbolConfiguration(pointSize: 16, weight: .semibold)
+        configuration.baseForegroundColor = UIColor(red: 0.20, green: 0.23, blue: 0.25, alpha: 1)
+        configuration.baseBackgroundColor = UIColor.white.withAlphaComponent(0.74)
+        configuration.cornerStyle = .capsule
+        configuration.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12)
+        settingsButton.configuration = configuration
+        settingsButton.addTarget(self, action: #selector(openSettingsButtonPressed), for: .touchUpInside)
+        view.addSubview(settingsButton)
+
+        NSLayoutConstraint.activate([
+            settingsButton.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -18),
+            settingsButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
+            settingsButton.widthAnchor.constraint(equalToConstant: 48),
+            settingsButton.heightAnchor.constraint(equalToConstant: 48)
+        ])
+    }
+
+    private func makeSettingsSectionLabel(_ text: String) -> UILabel {
+        let label = UILabel()
+        label.text = text.uppercased()
+        label.font = UIFont.systemFont(ofSize: 12, weight: .heavy)
+        label.textColor = UIColor(red: 0.54, green: 0.38, blue: 0.34, alpha: 1)
+        label.numberOfLines = 1
+        return label
+    }
+
+    private func makeSettingsText(_ text: String) -> UILabel {
+        let label = UILabel()
+        label.text = text
+        label.font = UIFont.systemFont(ofSize: 13, weight: .medium)
+        label.textColor = UIColor(red: 0.42, green: 0.43, blue: 0.44, alpha: 1)
+        label.numberOfLines = 0
+        label.lineBreakMode = .byWordWrapping
+        return label
+    }
+
+    private func makeSettingsButton(title: String, subtitle: String?, action: @escaping () -> Void) -> UIButton {
+        let button = UIButton(type: .system)
+        var titleAttributes = AttributeContainer()
+        titleAttributes.font = UIFont.systemFont(ofSize: 16, weight: .bold)
+
+        var configuration = UIButton.Configuration.filled()
+        configuration.attributedTitle = AttributedString(title, attributes: titleAttributes)
+        if let subtitle {
+            var subtitleAttributes = AttributeContainer()
+            subtitleAttributes.font = UIFont.systemFont(ofSize: 12, weight: .medium)
+            configuration.attributedSubtitle = AttributedString(subtitle, attributes: subtitleAttributes)
+        }
         configuration.baseForegroundColor = UIColor(red: 0.18, green: 0.20, blue: 0.22, alpha: 1)
         configuration.baseBackgroundColor = UIColor(red: 0.96, green: 0.91, blue: 0.88, alpha: 1)
         configuration.contentInsets = NSDirectionalEdgeInsets(top: 14, leading: 14, bottom: 14, trailing: 14)
+        configuration.titleAlignment = .leading
+        configuration.subtitleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
+            var outgoing = incoming
+            outgoing.foregroundColor = UIColor(red: 0.44, green: 0.45, blue: 0.46, alpha: 1)
+            return outgoing
+        }
         button.configuration = configuration
         button.layer.cornerRadius = 8
         button.clipsToBounds = true
         button.addAction(UIAction { _ in action() }, for: .touchUpInside)
         return button
+    }
+
+    @objc private func openSettingsButtonPressed() {
+        openSettingsPanel()
     }
 
     @objc private func settingsLongPressed(_ gesture: UILongPressGestureRecognizer) {
@@ -491,13 +617,13 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
             live2DView.playExpression("Happy Sparkle")
             live2DView.playMotionGroup("ANIMATIONS", index: 0)
             if shouldSpeak {
-                speakCharacterLine("Hey. I'm here now.")
+                speakCharacterLine("Hey. I'm here now.", resumesListening: true)
             }
         } else {
             live2DView.playExpression("mj")
             live2DView.playMotionGroup("", index: 0)
             if shouldSpeak {
-                speakCharacterLine("Hi. I'm back.")
+                speakCharacterLine("Hi. I'm back.", resumesListening: true)
             }
         }
     }
@@ -591,8 +717,9 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
         speakCharacterLine(openingGreetingText())
     }
 
-    private func speakCharacterLine(_ text: String) {
+    private func speakCharacterLine(_ text: String, resumesListening: Bool = true) {
         stopCurrentSpeech()
+        resumeListeningAfterCurrentSpeech = resumesListening
 
         var request = URLRequest(url: speechEndpointURL)
         request.httpMethod = "POST"
@@ -633,7 +760,7 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
                 !data.isEmpty
             else {
                 let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
-                print("Nobu exact voice unavailable. No system voice fallback. Status: \(statusCode)")
+                print("Nobu exact voice unavailable. Status: \(statusCode)")
                 return
             }
 
@@ -645,8 +772,13 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
     }
 
     private func stopCurrentSpeech() {
+        stopListeningForUser()
+        listenRestartWorkItem?.cancel()
+        listenRestartWorkItem = nil
         speechRequestTask?.cancel()
         speechRequestTask = nil
+        conversationRequestTask?.cancel()
+        conversationRequestTask = nil
         speechAudioPlayer?.stop()
         speechAudioPlayer = nil
         stopSpeechMouthMotion()
@@ -672,12 +804,198 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
 
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         speechAudioPlayer = nil
-        stopSpeechMouthMotion()
+        finishSpeechPlayback()
     }
 
     func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
         speechAudioPlayer = nil
+        finishSpeechPlayback()
+    }
+
+    private func finishSpeechPlayback() {
         stopSpeechMouthMotion()
+        guard resumeListeningAfterCurrentSpeech else {
+            return
+        }
+
+        resumeListeningAfterCurrentSpeech = false
+        scheduleListeningRestart(after: 0.55)
+    }
+
+    private func scheduleListeningRestart(after delay: TimeInterval) {
+        listenRestartWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.beginListeningForUser()
+        }
+        listenRestartWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
+    }
+
+    private func requestSpeechRecognitionReadiness() {
+        SFSpeechRecognizer.requestAuthorization { [weak self] status in
+            DispatchQueue.main.async {
+                self?.isSpeechRecognitionAuthorized = status == .authorized
+                if status != .authorized {
+                    print("Nobu speech recognition not authorized: \(status.rawValue)")
+                }
+            }
+        }
+    }
+
+    private func beginListeningForUser() {
+        guard isSpeechRecognitionAuthorized else {
+            requestSpeechRecognitionReadiness()
+            print("Nobu cannot listen until speech recognition is authorized.")
+            return
+        }
+
+        guard speechRecognizer?.isAvailable == true else {
+            print("Nobu speech recognizer is unavailable.")
+            return
+        }
+
+        stopListeningForUser()
+        latestRecognizedText = ""
+
+        do {
+            try AVAudioSession.sharedInstance().setCategory(
+                .playAndRecord,
+                mode: .measurement,
+                options: [.defaultToSpeaker, .allowBluetoothHFP, .duckOthers]
+            )
+            try AVAudioSession.sharedInstance().setActive(true, options: .notifyOthersOnDeactivation)
+        } catch {
+            print("Nobu listening audio session warning: \(error.localizedDescription)")
+        }
+
+        let request = SFSpeechAudioBufferRecognitionRequest()
+        request.shouldReportPartialResults = true
+        recognitionRequest = request
+
+        let inputNode = audioEngine.inputNode
+        let recordingFormat = inputNode.outputFormat(forBus: 0)
+        inputNode.removeTap(onBus: 0)
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { [weak self] buffer, _ in
+            self?.recognitionRequest?.append(buffer)
+        }
+
+        audioEngine.prepare()
+
+        do {
+            try audioEngine.start()
+            isListeningForUser = true
+        } catch {
+            print("Nobu listening start warning: \(error.localizedDescription)")
+            stopListeningForUser()
+            return
+        }
+
+        recognitionTask = speechRecognizer?.recognitionTask(with: request) { [weak self] result, error in
+            guard let self else {
+                return
+            }
+
+            if let result {
+                self.latestRecognizedText = result.bestTranscription.formattedString
+                if result.isFinal {
+                    self.finishUserSpeech()
+                }
+            }
+
+            if error != nil {
+                self.stopListeningForUser()
+            }
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.6) { [weak self] in
+            self?.finishUserSpeech()
+        }
+    }
+
+    private func finishUserSpeech() {
+        guard isListeningForUser else {
+            return
+        }
+
+        let userText = latestRecognizedText.trimmingCharacters(in: .whitespacesAndNewlines)
+        stopListeningForUser()
+
+        guard userText.count >= 2 else {
+            scheduleListeningRestart(after: 0.8)
+            return
+        }
+
+        requestConversationReply(for: userText)
+    }
+
+    private func stopListeningForUser() {
+        if audioEngine.isRunning {
+            audioEngine.stop()
+            audioEngine.inputNode.removeTap(onBus: 0)
+        }
+
+        recognitionRequest?.endAudio()
+        recognitionRequest = nil
+        recognitionTask?.cancel()
+        recognitionTask = nil
+        isListeningForUser = false
+    }
+
+    private func requestConversationReply(for userText: String) {
+        conversationRequestTask?.cancel()
+
+        var request = URLRequest(url: conversationEndpointURL)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 18
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let payload: [String: Any] = [
+            "message": userText,
+            "userName": savedUserName() ?? "",
+            "character": currentCharacterUsesMaleVoice ? "male" : "female"
+        ]
+
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
+            speakCharacterLine("I heard you, but I could not shape my answer yet.")
+            return
+        }
+
+        request.httpBody = body
+        conversationRequestTask = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            guard let self else {
+                return
+            }
+
+            if let error = error as NSError? {
+                if error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled {
+                    return
+                }
+
+                print("Nobu conversation request warning: \(error.localizedDescription)")
+            }
+
+            guard let reply = self.parseConversationReply(data: data) else {
+                print("Nobu conversation reply missing.")
+                return
+            }
+
+            DispatchQueue.main.async {
+                self.speakCharacterLine(reply, resumesListening: true)
+            }
+        }
+        conversationRequestTask?.resume()
+    }
+
+    private func parseConversationReply(data: Data?) -> String? {
+        guard
+            let data,
+            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let reply = object["reply"] as? String
+        else {
+            return nil
+        }
+
+        let trimmed = reply.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     private func startSpeechMouthMotion() {
@@ -783,9 +1101,15 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
 }
 
 private final class NobuRoomEnvironmentView: UIView {
+    private enum TimeScene {
+        case day
+        case evening
+        case night
+    }
+
     override init(frame: CGRect) {
         super.init(frame: frame)
-        backgroundColor = UIColor(red: 0.91, green: 0.97, blue: 0.96, alpha: 1)
+        backgroundColor = UIColor(red: 0.96, green: 0.94, blue: 0.92, alpha: 1)
         isUserInteractionEnabled = false
         contentMode = .redraw
     }
@@ -800,21 +1124,47 @@ private final class NobuRoomEnvironmentView: UIView {
             return
         }
 
-        drawAmbientBackdrop(in: rect, context: context)
-        drawDistantZones(in: rect, context: context)
-        drawDepthPath(in: rect, context: context)
-        drawSoftForeground(in: rect, context: context)
-        drawAtmosphere(in: rect, context: context)
+        let scene = currentTimeScene()
+        drawWall(in: rect, scene: scene, context: context)
+        drawWindow(in: rect, scene: scene, context: context)
+        drawFloor(in: rect, scene: scene, context: context)
+        drawSoftForeground(in: rect, scene: scene, context: context)
     }
 
-    private func drawAmbientBackdrop(in rect: CGRect, context: CGContext) {
-        let colors = [
-            UIColor(red: 0.73, green: 0.91, blue: 0.94, alpha: 1).cgColor,
-            UIColor(red: 0.93, green: 0.96, blue: 0.89, alpha: 1).cgColor,
-            UIColor(red: 1.00, green: 0.82, blue: 0.78, alpha: 1).cgColor
-        ] as CFArray
-        let locations: [CGFloat] = [0, 0.52, 1]
-        if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: locations) {
+    private func currentTimeScene() -> TimeScene {
+        let hour = Calendar.current.component(.hour, from: Date())
+        if hour >= 19 || hour < 6 {
+            return .night
+        }
+
+        if hour >= 16 {
+            return .evening
+        }
+
+        return .day
+    }
+
+    private func drawWall(in rect: CGRect, scene: TimeScene, context: CGContext) {
+        let colors: [CGColor]
+        switch scene {
+        case .day:
+            colors = [
+                UIColor(red: 0.98, green: 0.94, blue: 0.91, alpha: 1).cgColor,
+                UIColor(red: 0.91, green: 0.96, blue: 0.95, alpha: 1).cgColor
+            ]
+        case .evening:
+            colors = [
+                UIColor(red: 0.98, green: 0.89, blue: 0.86, alpha: 1).cgColor,
+                UIColor(red: 0.86, green: 0.89, blue: 0.94, alpha: 1).cgColor
+            ]
+        case .night:
+            colors = [
+                UIColor(red: 0.16, green: 0.18, blue: 0.25, alpha: 1).cgColor,
+                UIColor(red: 0.09, green: 0.12, blue: 0.18, alpha: 1).cgColor
+            ]
+        }
+
+        if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors as CFArray, locations: [0, 1]) {
             context.drawLinearGradient(
                 gradient,
                 start: CGPoint(x: rect.midX, y: rect.minY),
@@ -823,71 +1173,119 @@ private final class NobuRoomEnvironmentView: UIView {
             )
         }
 
-        drawGlow(
-            center: CGPoint(x: rect.width * 0.74, y: rect.height * 0.26),
-            radius: min(rect.width, rect.height) * 0.34,
-            color: UIColor(red: 1.0, green: 0.86, blue: 0.55, alpha: 0.35),
-            context: context
-        )
-        drawGlow(
-            center: CGPoint(x: rect.width * 0.18, y: rect.height * 0.42),
-            radius: min(rect.width, rect.height) * 0.26,
-            color: UIColor(red: 0.50, green: 0.83, blue: 0.74, alpha: 0.28),
-            context: context
-        )
+        let lineColor = scene == .night
+            ? UIColor(red: 0.95, green: 0.90, blue: 0.80, alpha: 0.10)
+            : UIColor(red: 0.50, green: 0.35, blue: 0.30, alpha: 0.13)
+        lineColor.setStroke()
+        let trim = UIBezierPath()
+        trim.lineWidth = 2
+        trim.move(to: CGPoint(x: 0, y: rect.height * 0.12))
+        trim.addLine(to: CGPoint(x: rect.width, y: rect.height * 0.08))
+        trim.stroke()
+
+        drawStringLights(in: rect, scene: scene)
     }
 
-    private func drawDistantZones(in rect: CGRect, context: CGContext) {
-        let horizon = rect.height * 0.50
+    private func drawWindow(in rect: CGRect, scene: TimeScene, context: CGContext) {
+        let windowRect = CGRect(
+            x: rect.width * 0.12,
+            y: rect.height * 0.10,
+            width: rect.width * 0.76,
+            height: rect.height * 0.46
+        )
+        let frameColor = scene == .night
+            ? UIColor(red: 0.34, green: 0.26, blue: 0.27, alpha: 1)
+            : UIColor(red: 0.62, green: 0.43, blue: 0.34, alpha: 1)
 
-        UIColor(red: 0.30, green: 0.56, blue: 0.61, alpha: 0.12).setFill()
-        let distantCurve = UIBezierPath()
-        distantCurve.move(to: CGPoint(x: -rect.width * 0.08, y: horizon))
-        distantCurve.addCurve(
-            to: CGPoint(x: rect.width * 1.08, y: horizon * 0.94),
-            controlPoint1: CGPoint(x: rect.width * 0.22, y: horizon * 0.74),
-            controlPoint2: CGPoint(x: rect.width * 0.72, y: horizon * 1.12)
-        )
-        distantCurve.addLine(to: CGPoint(x: rect.width * 1.08, y: rect.height * 0.68))
-        distantCurve.addLine(to: CGPoint(x: -rect.width * 0.08, y: rect.height * 0.68))
-        distantCurve.close()
-        distantCurve.fill()
+        drawRounded(windowRect.insetBy(dx: -8, dy: -8), radius: 18, fill: frameColor.withAlphaComponent(0.26))
+        drawRounded(windowRect, radius: 16, fill: frameColor)
 
-        drawRounded(
-            CGRect(x: -rect.width * 0.05, y: rect.height * 0.48, width: rect.width * 0.30, height: rect.height * 0.13),
-            radius: rect.height * 0.035,
-            fill: UIColor(red: 1.0, green: 0.74, blue: 0.73, alpha: 0.26)
-        )
-        drawRounded(
-            CGRect(x: rect.width * 0.06, y: rect.height * 0.56, width: rect.width * 0.20, height: rect.height * 0.035),
-            radius: rect.height * 0.018,
-            fill: UIColor(red: 1.0, green: 0.95, blue: 0.86, alpha: 0.34)
-        )
-        drawRounded(
-            CGRect(x: rect.width * 0.76, y: rect.height * 0.42, width: rect.width * 0.20, height: rect.height * 0.20),
-            radius: rect.height * 0.025,
-            fill: UIColor(red: 0.20, green: 0.42, blue: 0.46, alpha: 0.18)
-        )
-        drawRounded(
-            CGRect(x: rect.width * 0.79, y: rect.height * 0.46, width: rect.width * 0.15, height: rect.height * 0.012),
-            radius: rect.height * 0.006,
-            fill: UIColor(red: 0.95, green: 0.99, blue: 0.90, alpha: 0.45)
-        )
-        drawRounded(
-            CGRect(x: rect.width * 0.79, y: rect.height * 0.50, width: rect.width * 0.10, height: rect.height * 0.012),
-            radius: rect.height * 0.006,
-            fill: UIColor(red: 0.95, green: 0.99, blue: 0.90, alpha: 0.38)
-        )
+        let glassRect = windowRect.insetBy(dx: 12, dy: 12)
+        context.saveGState()
+        UIBezierPath(roundedRect: glassRect, cornerRadius: 10).addClip()
+        drawSky(in: glassRect, scene: scene, context: context)
+        drawViewLayers(in: glassRect, scene: scene)
+        context.restoreGState()
 
-        drawPlantSilhouette(at: CGPoint(x: rect.width * 0.30, y: rect.height * 0.56), scale: min(rect.width, rect.height) * 0.018)
-        drawPlantSilhouette(at: CGPoint(x: rect.width * 0.68, y: rect.height * 0.55), scale: min(rect.width, rect.height) * 0.014)
+        frameColor.setFill()
+        let mullionWidth = max(5, rect.width * 0.007)
+        UIBezierPath(roundedRect: CGRect(x: glassRect.midX - mullionWidth / 2, y: glassRect.minY, width: mullionWidth, height: glassRect.height), cornerRadius: mullionWidth / 2).fill()
+        UIBezierPath(roundedRect: CGRect(x: glassRect.minX, y: glassRect.midY - mullionWidth / 2, width: glassRect.width, height: mullionWidth), cornerRadius: mullionWidth / 2).fill()
+
+        drawCurtains(around: windowRect, scene: scene)
+        drawWindowShelf(under: windowRect, scene: scene)
     }
 
-    private func drawDepthPath(in rect: CGRect, context: CGContext) {
-        let floorTop = rect.height * 0.62
+    private func drawSky(in rect: CGRect, scene: TimeScene, context: CGContext) {
+        let colors = [
+            skyTopColor(for: scene).cgColor,
+            skyBottomColor(for: scene).cgColor
+        ] as CFArray
+        if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 1]) {
+            context.drawLinearGradient(
+                gradient,
+                start: CGPoint(x: rect.midX, y: rect.minY),
+                end: CGPoint(x: rect.midX, y: rect.maxY),
+                options: []
+            )
+        }
+
+        switch scene {
+        case .day:
+            drawCircle(center: CGPoint(x: rect.maxX - rect.width * 0.20, y: rect.minY + rect.height * 0.20), radius: min(rect.width, rect.height) * 0.12, fill: UIColor(red: 1.0, green: 0.86, blue: 0.42, alpha: 0.92))
+            drawCloud(at: CGPoint(x: rect.minX + rect.width * 0.24, y: rect.minY + rect.height * 0.25), scale: rect.width * 0.10, color: UIColor.white.withAlphaComponent(0.72))
+            drawCloud(at: CGPoint(x: rect.minX + rect.width * 0.70, y: rect.minY + rect.height * 0.34), scale: rect.width * 0.08, color: UIColor.white.withAlphaComponent(0.52))
+        case .evening:
+            drawCircle(center: CGPoint(x: rect.maxX - rect.width * 0.18, y: rect.minY + rect.height * 0.28), radius: min(rect.width, rect.height) * 0.10, fill: UIColor(red: 1.0, green: 0.66, blue: 0.46, alpha: 0.82))
+            drawCloud(at: CGPoint(x: rect.minX + rect.width * 0.30, y: rect.minY + rect.height * 0.30), scale: rect.width * 0.11, color: UIColor(red: 1.0, green: 0.85, blue: 0.78, alpha: 0.55))
+        case .night:
+            drawCircle(center: CGPoint(x: rect.maxX - rect.width * 0.20, y: rect.minY + rect.height * 0.20), radius: min(rect.width, rect.height) * 0.10, fill: UIColor(red: 0.96, green: 0.92, blue: 0.76, alpha: 0.88))
+            drawCircle(center: CGPoint(x: rect.maxX - rect.width * 0.16, y: rect.minY + rect.height * 0.17), radius: min(rect.width, rect.height) * 0.10, fill: skyTopColor(for: scene))
+            for index in 0..<18 {
+                let progress = CGFloat(index) / 18
+                drawCircle(
+                    center: CGPoint(x: rect.minX + rect.width * (0.08 + progress * 0.82), y: rect.minY + rect.height * (0.12 + 0.30 * abs(sin(progress * 7.1)))),
+                    radius: 1.5 + CGFloat(index % 3),
+                    fill: UIColor.white.withAlphaComponent(0.62)
+                )
+            }
+        }
+    }
+
+    private func drawViewLayers(in rect: CGRect, scene: TimeScene) {
+        let farColor = scene == .night
+            ? UIColor(red: 0.18, green: 0.22, blue: 0.31, alpha: 0.74)
+            : UIColor(red: 0.54, green: 0.70, blue: 0.72, alpha: 0.34)
+        farColor.setFill()
+        let hills = UIBezierPath()
+        hills.move(to: CGPoint(x: rect.minX, y: rect.maxY * 0.74))
+        hills.addCurve(
+            to: CGPoint(x: rect.maxX, y: rect.maxY * 0.70),
+            controlPoint1: CGPoint(x: rect.minX + rect.width * 0.28, y: rect.maxY * 0.56),
+            controlPoint2: CGPoint(x: rect.minX + rect.width * 0.66, y: rect.maxY * 0.82)
+        )
+        hills.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        hills.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        hills.close()
+        hills.fill()
+
+        let buildingColor = scene == .night
+            ? UIColor(red: 0.08, green: 0.11, blue: 0.17, alpha: 0.55)
+            : UIColor(red: 0.66, green: 0.77, blue: 0.80, alpha: 0.34)
+        for index in 0..<7 {
+            let width = rect.width * CGFloat([0.12, 0.08, 0.10, 0.15, 0.09, 0.12, 0.07][index])
+            let height = rect.height * CGFloat([0.22, 0.16, 0.28, 0.20, 0.25, 0.18, 0.23][index])
+            let x = rect.minX + rect.width * CGFloat(index) * 0.15
+            let building = CGRect(x: x, y: rect.maxY - height, width: width, height: height)
+            drawRounded(building, radius: 2, fill: buildingColor)
+        }
+    }
+
+    private func drawFloor(in rect: CGRect, scene: TimeScene, context: CGContext) {
+        let floorTop = rect.height * 0.64
         let floorColors = [
-            UIColor(red: 0.80, green: 0.91, blue: 0.86, alpha: 0.88).cgColor,
-            UIColor(red: 0.96, green: 0.80, blue: 0.70, alpha: 0.82).cgColor
+            floorTopColor(for: scene).cgColor,
+            floorBottomColor(for: scene).cgColor
         ] as CFArray
         if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: floorColors, locations: [0, 1]) {
             context.drawLinearGradient(
@@ -898,25 +1296,18 @@ private final class NobuRoomEnvironmentView: UIView {
             )
         }
 
-        let path = UIBezierPath()
-        path.move(to: CGPoint(x: rect.width * 0.43, y: floorTop))
-        path.addLine(to: CGPoint(x: rect.width * 0.57, y: floorTop))
-        path.addLine(to: CGPoint(x: rect.width * 0.78, y: rect.maxY))
-        path.addLine(to: CGPoint(x: rect.width * 0.22, y: rect.maxY))
-        path.close()
-        UIColor(red: 1.0, green: 0.96, blue: 0.88, alpha: 0.34).setFill()
-        path.fill()
-
-        UIColor(red: 0.31, green: 0.48, blue: 0.49, alpha: 0.12).setStroke()
-        for offset in stride(from: -0.34, through: 0.34, by: 0.17) {
+        let lineColor = scene == .night
+            ? UIColor(red: 0.90, green: 0.82, blue: 0.70, alpha: 0.10)
+            : UIColor(red: 0.48, green: 0.31, blue: 0.22, alpha: 0.14)
+        lineColor.setStroke()
+        for offset in stride(from: -0.42, through: 0.42, by: 0.14) {
             let line = UIBezierPath()
-            line.lineWidth = 1.2
+            line.lineWidth = 1
             line.move(to: CGPoint(x: rect.midX + rect.width * offset * 0.20, y: floorTop))
             line.addLine(to: CGPoint(x: rect.midX + rect.width * offset, y: rect.maxY))
             line.stroke()
         }
 
-        UIColor(red: 0.21, green: 0.42, blue: 0.43, alpha: 0.10).setStroke()
         for index in 0..<4 {
             let y = floorTop + (rect.maxY - floorTop) * CGFloat(index + 1) / 5
             let line = UIBezierPath()
@@ -931,58 +1322,162 @@ private final class NobuRoomEnvironmentView: UIView {
         }
     }
 
-    private func drawSoftForeground(in rect: CGRect, context: CGContext) {
+    private func drawSoftForeground(in rect: CGRect, scene: TimeScene, context: CGContext) {
+        let rugColor = scene == .night
+            ? UIColor(red: 0.78, green: 0.72, blue: 0.66, alpha: 0.16)
+            : UIColor(red: 1.0, green: 0.93, blue: 0.78, alpha: 0.42)
+        drawRounded(
+            CGRect(x: rect.width * 0.26, y: rect.height * 0.84, width: rect.width * 0.48, height: rect.height * 0.13),
+            radius: rect.height * 0.06,
+            fill: rugColor
+        )
+
         drawGlow(
-            center: CGPoint(x: rect.midX, y: rect.height * 0.82),
+            center: CGPoint(x: rect.midX, y: rect.height * 0.79),
             radius: min(rect.width, rect.height) * 0.26,
-            color: UIColor(red: 1.0, green: 0.91, blue: 0.70, alpha: 0.20),
+            color: scene == .night
+                ? UIColor(red: 0.52, green: 0.68, blue: 0.95, alpha: 0.15)
+                : UIColor(red: 1.0, green: 0.88, blue: 0.58, alpha: 0.20),
             context: context
         )
-
-        UIColor(red: 0.23, green: 0.42, blue: 0.41, alpha: 0.13).setFill()
-        UIBezierPath(ovalIn: CGRect(
-            x: rect.width * 0.32,
-            y: rect.height * 0.83,
-            width: rect.width * 0.36,
-            height: rect.height * 0.055
-        )).fill()
     }
 
-    private func drawAtmosphere(in rect: CGRect, context: CGContext) {
-        UIColor(red: 1.0, green: 1.0, blue: 0.96, alpha: 0.48).setFill()
-        for index in 0..<18 {
-            let progress = CGFloat(index) / 17
-            let x = rect.width * (0.08 + 0.84 * progress)
-            let y = rect.height * (0.14 + 0.10 * sin(progress * .pi * 2.6))
-            drawCircle(center: CGPoint(x: x, y: y), radius: max(2, min(rect.width, rect.height) * 0.0045), fill: UIColor(red: 1.0, green: 1.0, blue: 0.96, alpha: 0.42))
-        }
-
-        UIColor(red: 0.22, green: 0.46, blue: 0.48, alpha: 0.12).setStroke()
+    private func drawStringLights(in rect: CGRect, scene: TimeScene) {
+        let cordColor = scene == .night
+            ? UIColor(red: 0.98, green: 0.84, blue: 0.58, alpha: 0.38)
+            : UIColor(red: 0.50, green: 0.36, blue: 0.32, alpha: 0.24)
+        cordColor.setStroke()
         let arc = UIBezierPath()
-        arc.lineWidth = 2
+        arc.lineWidth = 1.6
         arc.move(to: CGPoint(x: rect.width * 0.08, y: rect.height * 0.16))
         arc.addCurve(
-            to: CGPoint(x: rect.width * 0.92, y: rect.height * 0.14),
-            controlPoint1: CGPoint(x: rect.width * 0.32, y: rect.height * 0.24),
-            controlPoint2: CGPoint(x: rect.width * 0.65, y: rect.height * 0.06)
+            to: CGPoint(x: rect.width * 0.92, y: rect.height * 0.15),
+            controlPoint1: CGPoint(x: rect.width * 0.34, y: rect.height * 0.21),
+            controlPoint2: CGPoint(x: rect.width * 0.64, y: rect.height * 0.09)
         )
         arc.stroke()
+
+        for index in 0..<10 {
+            let progress = CGFloat(index) / 9
+            let x = rect.width * (0.10 + progress * 0.80)
+            let y = rect.height * (0.16 + 0.035 * sin(progress * .pi * 2.0))
+            let bulbColor = scene == .night
+                ? UIColor(red: 1.0, green: 0.82, blue: 0.42, alpha: 0.88)
+                : UIColor(red: 1.0, green: 0.74, blue: 0.42, alpha: 0.42)
+            drawCircle(center: CGPoint(x: x, y: y), radius: 3.5, fill: bulbColor)
+        }
     }
 
-    private func drawPlantSilhouette(at point: CGPoint, scale: CGFloat) {
-        UIColor(red: 0.15, green: 0.45, blue: 0.36, alpha: 0.22).setFill()
-        let pot = CGRect(x: point.x - scale * 10, y: point.y + scale * 22, width: scale * 20, height: scale * 18)
-        UIBezierPath(roundedRect: pot, cornerRadius: scale * 4).fill()
+    private func drawCurtains(around rect: CGRect, scene: TimeScene) {
+        let curtainColor = scene == .night
+            ? UIColor(red: 0.80, green: 0.72, blue: 0.78, alpha: 0.50)
+            : UIColor(red: 0.95, green: 0.84, blue: 0.82, alpha: 0.54)
+        curtainColor.setFill()
 
-        for index in 0..<7 {
-            let angle = CGFloat(index) * .pi / 7 - .pi * 0.9
-            let leaf = UIBezierPath(ovalIn: CGRect(
-                x: point.x + cos(angle) * scale * 26 - scale * 8,
-                y: point.y + sin(angle) * scale * 28 - scale * 12,
-                width: scale * 16,
-                height: scale * 28
-            ))
-            leaf.fill()
+        for side in [0, 1] {
+            let x = side == 0 ? rect.minX - rect.width * 0.08 : rect.maxX - rect.width * 0.04
+            let curtain = UIBezierPath()
+            curtain.move(to: CGPoint(x: x, y: rect.minY - rect.height * 0.04))
+            curtain.addCurve(
+                to: CGPoint(x: x + rect.width * 0.08, y: rect.maxY + rect.height * 0.07),
+                controlPoint1: CGPoint(x: x + rect.width * 0.05, y: rect.midY),
+                controlPoint2: CGPoint(x: x - rect.width * 0.03, y: rect.maxY)
+            )
+            curtain.addLine(to: CGPoint(x: x + rect.width * 0.18, y: rect.maxY + rect.height * 0.04))
+            curtain.addCurve(
+                to: CGPoint(x: x + rect.width * 0.10, y: rect.minY - rect.height * 0.02),
+                controlPoint1: CGPoint(x: x + rect.width * 0.12, y: rect.maxY * 0.78),
+                controlPoint2: CGPoint(x: x + rect.width * 0.16, y: rect.midY)
+            )
+            curtain.close()
+            curtain.fill()
+        }
+    }
+
+    private func drawWindowShelf(under rect: CGRect, scene: TimeScene) {
+        let shelfColor = scene == .night
+            ? UIColor(red: 0.40, green: 0.29, blue: 0.28, alpha: 0.92)
+            : UIColor(red: 0.64, green: 0.43, blue: 0.31, alpha: 0.92)
+        drawRounded(
+            CGRect(x: rect.minX + rect.width * 0.10, y: rect.maxY + 8, width: rect.width * 0.80, height: 12),
+            radius: 6,
+            fill: shelfColor
+        )
+
+        drawPlant(at: CGPoint(x: rect.midX - rect.width * 0.20, y: rect.maxY + 4), scale: rect.width * 0.020, scene: scene)
+        drawPlant(at: CGPoint(x: rect.midX + rect.width * 0.22, y: rect.maxY + 5), scale: rect.width * 0.016, scene: scene)
+    }
+
+    private func drawCloud(at point: CGPoint, scale: CGFloat, color: UIColor) {
+        color.setFill()
+        drawCircle(center: CGPoint(x: point.x - scale * 0.42, y: point.y + scale * 0.08), radius: scale * 0.34, fill: color)
+        drawCircle(center: CGPoint(x: point.x, y: point.y - scale * 0.08), radius: scale * 0.46, fill: color)
+        drawCircle(center: CGPoint(x: point.x + scale * 0.48, y: point.y + scale * 0.10), radius: scale * 0.30, fill: color)
+        drawRounded(CGRect(x: point.x - scale * 0.62, y: point.y, width: scale * 1.24, height: scale * 0.36), radius: scale * 0.18, fill: color)
+    }
+
+    private func drawPlant(at point: CGPoint, scale: CGFloat, scene: TimeScene) {
+        let leafColor = scene == .night
+            ? UIColor(red: 0.33, green: 0.51, blue: 0.41, alpha: 0.70)
+            : UIColor(red: 0.32, green: 0.61, blue: 0.42, alpha: 0.78)
+        let potColor = scene == .night
+            ? UIColor(red: 0.50, green: 0.35, blue: 0.32, alpha: 0.80)
+            : UIColor(red: 0.72, green: 0.45, blue: 0.32, alpha: 0.84)
+
+        drawRounded(CGRect(x: point.x - scale * 8, y: point.y + scale * 12, width: scale * 16, height: scale * 12), radius: scale * 3, fill: potColor)
+        leafColor.setFill()
+        for index in 0..<6 {
+            let angle = CGFloat(index) * .pi / 6 - .pi * 0.9
+            UIBezierPath(ovalIn: CGRect(
+                x: point.x + cos(angle) * scale * 14 - scale * 4,
+                y: point.y + sin(angle) * scale * 14 - scale * 7,
+                width: scale * 8,
+                height: scale * 15
+            )).fill()
+        }
+    }
+
+    private func skyTopColor(for scene: TimeScene) -> UIColor {
+        switch scene {
+        case .day:
+            return UIColor(red: 0.65, green: 0.86, blue: 0.96, alpha: 1)
+        case .evening:
+            return UIColor(red: 0.58, green: 0.62, blue: 0.84, alpha: 1)
+        case .night:
+            return UIColor(red: 0.08, green: 0.12, blue: 0.24, alpha: 1)
+        }
+    }
+
+    private func skyBottomColor(for scene: TimeScene) -> UIColor {
+        switch scene {
+        case .day:
+            return UIColor(red: 0.86, green: 0.95, blue: 0.99, alpha: 1)
+        case .evening:
+            return UIColor(red: 0.98, green: 0.62, blue: 0.52, alpha: 1)
+        case .night:
+            return UIColor(red: 0.17, green: 0.20, blue: 0.34, alpha: 1)
+        }
+    }
+
+    private func floorTopColor(for scene: TimeScene) -> UIColor {
+        switch scene {
+        case .day:
+            return UIColor(red: 0.82, green: 0.70, blue: 0.56, alpha: 0.88)
+        case .evening:
+            return UIColor(red: 0.72, green: 0.55, blue: 0.48, alpha: 0.88)
+        case .night:
+            return UIColor(red: 0.22, green: 0.20, blue: 0.24, alpha: 0.92)
+        }
+    }
+
+    private func floorBottomColor(for scene: TimeScene) -> UIColor {
+        switch scene {
+        case .day:
+            return UIColor(red: 0.74, green: 0.55, blue: 0.38, alpha: 0.90)
+        case .evening:
+            return UIColor(red: 0.55, green: 0.38, blue: 0.33, alpha: 0.92)
+        case .night:
+            return UIColor(red: 0.12, green: 0.12, blue: 0.16, alpha: 0.96)
         }
     }
 
