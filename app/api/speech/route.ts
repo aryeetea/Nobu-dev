@@ -62,7 +62,11 @@ export async function POST(request: Request) {
   })
 
   if (!elevenLabsResponse.ok) {
-    return jsonError('Nobu speech failed.', 502)
+    const details = await elevenLabsResponse.text().catch(() => '')
+    const message = details
+      ? `Nobu speech failed. ElevenLabs status ${elevenLabsResponse.status}: ${details.slice(0, 500)}`
+      : `Nobu speech failed. ElevenLabs status ${elevenLabsResponse.status}.`
+    return jsonError(message, 502)
   }
 
   const audio = await elevenLabsResponse.arrayBuffer()

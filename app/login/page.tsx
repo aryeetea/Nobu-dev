@@ -9,6 +9,7 @@ type LoginMode = 'signin' | 'signup'
 export default function LoginPage() {
   const router = useRouter()
   const [mode, setMode] = useState<LoginMode>('signin')
+  const [birthday, setBirthday] = useState('')
   const [name, setName] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -23,7 +24,7 @@ export default function LoginPage() {
     try {
       if (mode === 'signup') {
         const response = await fetch('/api/auth/register', {
-          body: JSON.stringify({ name, password, username }),
+          body: JSON.stringify({ birthday, name, password, username }),
           headers: { 'Content-Type': 'application/json' },
           method: 'POST',
         })
@@ -104,13 +105,24 @@ export default function LoginPage() {
 
         <form className="login-form" onSubmit={submit}>
           {mode === 'signup' && (
-            <input
-              autoComplete="name"
-              className="login-input"
-              onChange={(event) => setName(event.target.value)}
-              placeholder="Your name"
-              value={name}
-            />
+            <>
+              <input
+                autoComplete="name"
+                className="login-input"
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Your name"
+                required
+                value={name}
+              />
+              <input
+                className="login-input"
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={(event) => setBirthday(event.target.value)}
+                required
+                type="date"
+                value={birthday}
+              />
+            </>
           )}
           <input
             autoCapitalize="none"
@@ -143,7 +155,7 @@ export default function LoginPage() {
                 : 'Sign in'}
           </button>
           <p className="hint">
-            Passwords are stored as salted hashes. You can add email recovery later before launch.
+            Nobu uses your name and birthday for personal greetings. Passwords are stored as salted hashes.
           </p>
         </form>
       </section>

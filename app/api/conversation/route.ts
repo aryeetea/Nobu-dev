@@ -11,6 +11,7 @@ In ScanFit support, give honest outfit feedback, smart sizing guidance, look-his
 Be direct about what works and what does not, but never shame the user's body, identity, budget, or taste.
 Do not claim exact body measurements unless the user provides them or a future scan feature supplies them.
 You are not a romantic partner, boyfriend, girlfriend, spouse, or dating companion.
+If the user has shared a birthday and today is their birthday, wish them happy birthday warmly once.
 Use short, natural spoken responses. Ask one simple follow-up when needed.
 `
 
@@ -76,7 +77,7 @@ function sendSocketMessage(socket: WebSocket, message: unknown) {
   }
 }
 
-async function requestElevenLabsAgentReply(message: string, userName: string, character: string) {
+async function requestElevenLabsAgentReply(message: string, userName: string, birthday: string, character: string) {
   const url = await elevenLabsConversationURL()
 
   return new Promise<string>((resolve, reject) => {
@@ -116,13 +117,18 @@ async function requestElevenLabsAgentReply(message: string, userName: string, ch
           },
         },
         dynamic_variables: {
+          birthday,
           user_name: userName,
           nobu_character: character,
         },
       })
       sendSocketMessage(socket, {
         type: 'user_message',
-        text: userName ? `My name is ${userName}. ${message}` : message,
+        text: [
+          userName ? `My name is ${userName}.` : '',
+          birthday ? `My birthday is ${birthday}.` : '',
+          message,
+        ].filter(Boolean).join(' '),
       })
     }
 
@@ -168,7 +174,7 @@ async function requestElevenLabsAgentReply(message: string, userName: string, ch
 }
 
 export async function POST(request: Request) {
-  let body: { message?: unknown; userName?: unknown; character?: unknown }
+  let body: { birthday?: unknown; message?: unknown; userName?: unknown; character?: unknown }
 
   try {
     body = await request.json()
@@ -178,6 +184,7 @@ export async function POST(request: Request) {
 
   const message = typeof body.message === 'string' ? body.message.trim() : ''
   const userName = typeof body.userName === 'string' ? body.userName.trim() : ''
+  const birthday = typeof body.birthday === 'string' ? body.birthday.trim() : ''
   const character = body.character === 'male' ? 'masculine' : 'feminine'
 
   if (!message) {
@@ -189,7 +196,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const reply = await requestElevenLabsAgentReply(message, userName, character)
+    const reply = await requestElevenLabsAgentReply(message, userName, birthday, character)
     if (!reply) {
       return jsonError('ElevenLabs agent did not return a reply.', 502)
     }

@@ -11,16 +11,19 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
     private let floorShadowView = UIView()
     private let live2DView = NobuLive2DView(character: "Alexia")
     private let settingsButton = UIButton(type: .system)
+    private let settingsHitAreaButton = UIButton(type: .custom)
     private let settingsScrimButton = UIButton(type: .custom)
     private let settingsPanelView = UIView()
     private let settingsScrollView = UIScrollView()
     private let settingsStackView = UIStackView()
+    private let registerEndpointURL = URL(string: "https://heynobu.netlify.app/api/auth/register")!
     private let speechEndpointURL = URL(string: "https://heynobu.netlify.app/api/speech")!
     private let conversationEndpointURL = URL(string: "https://heynobu.netlify.app/api/conversation")!
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "en-US"))
     private let audioEngine = AVAudioEngine()
     private var speechRequestTask: URLSessionDataTask?
     private var conversationRequestTask: URLSessionDataTask?
+    private var registerRequestTask: URLSessionDataTask?
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
     private var listenRestartWorkItem: DispatchWorkItem?
@@ -36,6 +39,7 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
     private var activeSceneAnchor = CGPoint.zero
     private var activeStyleIndex = 0
     private var hasPlayedOpeningGreeting = false
+    private var hasPresentedProfileSetup = false
 
     private struct RoomHotspot {
         let name: String
@@ -119,6 +123,7 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
     deinit {
         speechRequestTask?.cancel()
         conversationRequestTask?.cancel()
+        registerRequestTask?.cancel()
         recognitionTask?.cancel()
         audioEngine.stop()
         speechAudioPlayer?.stop()
@@ -152,10 +157,19 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         positionRoomHotspots()
+        if settingsPanelView.isHidden {
+            view.bringSubviewToFront(settingsButton)
+            view.bringSubviewToFront(settingsHitAreaButton)
+        }
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        if shouldShowProfileSetup() {
+            presentProfileSetup()
+            return
+        }
+
         startOpeningGreetingIfNeeded()
     }
 
@@ -467,6 +481,7 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
     private func configureSettingsShortcut() {
         settingsButton.translatesAutoresizingMaskIntoConstraints = false
         settingsButton.accessibilityLabel = "Open Nobu settings"
+        settingsButton.isUserInteractionEnabled = true
         settingsButton.layer.shadowColor = UIColor.black.cgColor
         settingsButton.layer.shadowOpacity = 0.12
         settingsButton.layer.shadowRadius = 10
@@ -483,12 +498,25 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
         settingsButton.addTarget(self, action: #selector(openSettingsButtonPressed), for: .touchUpInside)
         view.addSubview(settingsButton)
 
+        settingsHitAreaButton.translatesAutoresizingMaskIntoConstraints = false
+        settingsHitAreaButton.backgroundColor = .clear
+        settingsHitAreaButton.accessibilityLabel = "Open Nobu settings"
+        settingsHitAreaButton.addTarget(self, action: #selector(openSettingsButtonPressed), for: .touchUpInside)
+        view.addSubview(settingsHitAreaButton)
+
         NSLayoutConstraint.activate([
             settingsButton.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -18),
-            settingsButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
-            settingsButton.widthAnchor.constraint(equalToConstant: 48),
-            settingsButton.heightAnchor.constraint(equalToConstant: 48)
+            settingsButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 22),
+            settingsButton.widthAnchor.constraint(equalToConstant: 56),
+            settingsButton.heightAnchor.constraint(equalToConstant: 56),
+
+            settingsHitAreaButton.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            settingsHitAreaButton.topAnchor.constraint(equalTo: view.topAnchor),
+            settingsHitAreaButton.widthAnchor.constraint(equalToConstant: 120),
+            settingsHitAreaButton.heightAnchor.constraint(equalToConstant: 120)
         ])
+        view.bringSubviewToFront(settingsButton)
+        view.bringSubviewToFront(settingsHitAreaButton)
     }
 
     private func makeSettingsSectionLabel(_ text: String) -> UILabel {
@@ -551,6 +579,10 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
     }
 
     private func openSettingsPanel() {
+        view.bringSubviewToFront(settingsScrimButton)
+        view.bringSubviewToFront(settingsPanelView)
+        settingsButton.isHidden = true
+        settingsHitAreaButton.isHidden = true
         settingsScrimButton.isHidden = false
         settingsPanelView.isHidden = false
         settingsPanelView.transform = CGAffineTransform(translationX: 0, y: 24)
@@ -570,6 +602,10 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
         } completion: { _ in
             self.settingsScrimButton.isHidden = true
             self.settingsPanelView.isHidden = true
+            self.settingsButton.isHidden = false
+            self.settingsHitAreaButton.isHidden = false
+            self.view.bringSubviewToFront(self.settingsButton)
+            self.view.bringSubviewToFront(self.settingsHitAreaButton)
             self.settingsPanelView.transform = .identity
         }
     }
@@ -611,6 +647,7 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
 
         currentCharacter = character
         activeStyleIndex = 0
+        roomEnvironmentView.character = currentCharacter
         live2DView.setCharacter(currentCharacter)
 
         if currentCharacter == "Asuka" {
@@ -698,6 +735,11 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
             return
         }
 
+        guard !shouldShowProfileSetup() else {
+            presentProfileSetup()
+            return
+        }
+
         hasPlayedOpeningGreeting = true
         live2DView.playExpression("mj")
         playDefaultCharacterMotion()
@@ -715,6 +757,123 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
         }
 
         speakCharacterLine(openingGreetingText())
+    }
+
+    private func shouldShowProfileSetup() -> Bool {
+        savedUserName() == nil || savedUserBirthday() == nil
+    }
+
+    private func presentProfileSetup(message: String? = nil) {
+        guard !hasPresentedProfileSetup, presentedViewController == nil else {
+            return
+        }
+
+        hasPresentedProfileSetup = true
+        stopCurrentSpeech()
+
+        let alert = UIAlertController(
+            title: "Create your Nobu profile",
+            message: message ?? "Nobu needs your name and birthday for personal greetings.",
+            preferredStyle: .alert
+        )
+
+        alert.addTextField { textField in
+            textField.placeholder = "Your name"
+            textField.textContentType = .name
+            textField.autocapitalizationType = .words
+        }
+        alert.addTextField { textField in
+            textField.placeholder = "Username"
+            textField.textContentType = .username
+            textField.autocapitalizationType = .none
+            textField.autocorrectionType = .no
+        }
+        alert.addTextField { textField in
+            textField.placeholder = "Password"
+            textField.textContentType = .newPassword
+            textField.isSecureTextEntry = true
+        }
+        alert.addTextField { textField in
+            textField.placeholder = "Birthday (YYYY-MM-DD)"
+            textField.keyboardType = .numbersAndPunctuation
+        }
+
+        alert.addAction(UIAlertAction(title: "Create profile", style: .default) { [weak self, weak alert] _ in
+            guard let self else {
+                return
+            }
+
+            let fields = alert?.textFields ?? []
+            let name = fields[safe: 0]?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let username = fields[safe: 1]?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let password = fields[safe: 2]?.text ?? ""
+            let birthday = fields[safe: 3]?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+            self.hasPresentedProfileSetup = false
+            self.createNobuProfile(name: name, username: username, password: password, birthday: birthday)
+        })
+
+        present(alert, animated: true)
+    }
+
+    private func createNobuProfile(name: String, username: String, password: String, birthday: String) {
+        guard !name.isEmpty else {
+            presentProfileSetup(message: "Add your name so Nobu knows what to call you.")
+            return
+        }
+
+        guard username.count >= 3 else {
+            presentProfileSetup(message: "Choose a username with at least 3 characters.")
+            return
+        }
+
+        guard password.count >= 8 else {
+            presentProfileSetup(message: "Use a password with at least 8 characters.")
+            return
+        }
+
+        guard isValidBirthdayString(birthday) else {
+            presentProfileSetup(message: "Use your birthday in YYYY-MM-DD format.")
+            return
+        }
+
+        var request = URLRequest(url: registerEndpointURL)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 15
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "birthday": birthday,
+            "name": name,
+            "password": password,
+            "username": username
+        ])
+
+        registerRequestTask = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            guard let self else {
+                return
+            }
+
+            DispatchQueue.main.async {
+                self.registerRequestTask = nil
+
+                if let error {
+                    self.presentProfileSetup(message: "Nobu could not create the account yet: \(error.localizedDescription)")
+                    return
+                }
+
+                if let httpResponse = response as? HTTPURLResponse, !(200..<300).contains(httpResponse.statusCode) {
+                    let serverMessage = self.parseServerError(data: data) ?? "Try a different username."
+                    self.presentProfileSetup(message: serverMessage)
+                    return
+                }
+
+                UserDefaults.standard.set(name, forKey: "nobu.userName")
+                UserDefaults.standard.set(username.lowercased(), forKey: "nobu.username")
+                UserDefaults.standard.set(birthday, forKey: "nobu.birthday")
+                self.startOpeningGreetingIfNeeded()
+            }
+        }
+        registerRequestTask?.resume()
     }
 
     private func speakCharacterLine(_ text: String, resumesListening: Bool = true) {
@@ -760,7 +919,8 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
                 !data.isEmpty
             else {
                 let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
-                print("Nobu exact voice unavailable. Status: \(statusCode)")
+                let serverMessage = data.flatMap { String(data: $0, encoding: .utf8) } ?? "No response body."
+                print("Nobu exact voice unavailable. Status: \(statusCode). Server: \(serverMessage)")
                 return
             }
 
@@ -949,6 +1109,7 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
         request.timeoutInterval = 18
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let payload: [String: Any] = [
+            "birthday": savedUserBirthday() ?? "",
             "message": userText,
             "userName": savedUserName() ?? "",
             "character": currentCharacterUsesMaleVoice ? "male" : "female"
@@ -973,8 +1134,15 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
                 print("Nobu conversation request warning: \(error.localizedDescription)")
             }
 
+            if let httpResponse = response as? HTTPURLResponse, !(200..<300).contains(httpResponse.statusCode) {
+                let serverMessage = data.flatMap { String(data: $0, encoding: .utf8) } ?? "No response body."
+                print("Nobu conversation request failed. Status: \(httpResponse.statusCode). Server: \(serverMessage)")
+                return
+            }
+
             guard let reply = self.parseConversationReply(data: data) else {
-                print("Nobu conversation reply missing.")
+                let serverMessage = data.flatMap { String(data: $0, encoding: .utf8) } ?? "No response body."
+                print("Nobu conversation reply missing. Server: \(serverMessage)")
                 return
             }
 
@@ -1026,6 +1194,10 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
         let name = savedUserName()
         let closenessLevel = UserDefaults.standard.integer(forKey: "nobu.closenessLevel")
 
+        if let name, isBirthdayToday(savedUserBirthday()) {
+            return "Happy birthday, \(name). I hope today feels soft and special. How are you feeling?"
+        }
+
         if let name, closenessLevel >= 3 {
             return "Hey \(name). I was hoping we would talk today. How are you feeling?"
         }
@@ -1054,6 +1226,67 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
         }
 
         return nil
+    }
+
+    private func savedUserBirthday() -> String? {
+        UserDefaults.standard.string(forKey: "nobu.birthday")?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+    }
+
+    private func isValidBirthdayString(_ birthday: String) -> Bool {
+        let parts = birthday.split(separator: "-")
+        guard parts.count == 3,
+              let year = Int(parts[0]),
+              let month = Int(parts[1]),
+              let day = Int(parts[2]),
+              year >= 1900,
+              month >= 1,
+              month <= 12,
+              day >= 1,
+              day <= 31
+        else {
+            return false
+        }
+
+        var components = DateComponents()
+        components.calendar = Calendar(identifier: .gregorian)
+        components.year = year
+        components.month = month
+        components.day = day
+        guard let date = components.date else {
+            return false
+        }
+
+        return date <= Date()
+    }
+
+    private func isBirthdayToday(_ birthday: String?) -> Bool {
+        guard let birthday else {
+            return false
+        }
+
+        let parts = birthday.split(separator: "-")
+        guard parts.count == 3,
+              let month = Int(parts[1]),
+              let day = Int(parts[2])
+        else {
+            return false
+        }
+
+        let today = Calendar.current.dateComponents([.month, .day], from: Date())
+        return today.month == month && today.day == day
+    }
+
+    private func parseServerError(data: Data?) -> String? {
+        guard
+            let data,
+            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let error = object["error"] as? String,
+            !error.isEmpty
+        else {
+            return nil
+        }
+
+        return error
     }
 
     private func printLive2DShaderBundleStatus() {
@@ -1100,11 +1333,31 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
     }
 }
 
+private extension Collection {
+    subscript(safe index: Index) -> Element? {
+        indices.contains(index) ? self[index] : nil
+    }
+}
+
+private extension String {
+    var nilIfEmpty: String? {
+        isEmpty ? nil : self
+    }
+}
+
 private final class NobuRoomEnvironmentView: UIView {
     private enum TimeScene {
         case day
         case evening
         case night
+    }
+
+    var character = "Alexia" {
+        didSet {
+            if oldValue != character {
+                setNeedsDisplay()
+            }
+        }
     }
 
     override init(frame: CGRect) {
@@ -1125,6 +1378,11 @@ private final class NobuRoomEnvironmentView: UIView {
         }
 
         let scene = currentTimeScene()
+        if let roomImage = bundledRoomImage(for: scene) {
+            drawAspectFill(roomImage, in: rect)
+            return
+        }
+
         drawWall(in: rect, scene: scene, context: context)
         drawWindow(in: rect, scene: scene, context: context)
         drawFloor(in: rect, scene: scene, context: context)
@@ -1142,6 +1400,31 @@ private final class NobuRoomEnvironmentView: UIView {
         }
 
         return .day
+    }
+
+    private func bundledRoomImage(for scene: TimeScene) -> UIImage? {
+        if character == "Asuka" {
+            return UIImage(named: "NobuRoomAsuka") ?? UIImage(named: "NobuRoomAlexia")
+        }
+
+        return UIImage(named: "NobuRoomAlexia") ?? UIImage(named: "NobuRoomAsuka")
+    }
+
+    private func drawAspectFill(_ image: UIImage, in rect: CGRect) {
+        let imageSize = image.size
+        guard imageSize.width > 0, imageSize.height > 0 else {
+            return
+        }
+
+        let scale = max(rect.width / imageSize.width, rect.height / imageSize.height)
+        let drawSize = CGSize(width: imageSize.width * scale, height: imageSize.height * scale)
+        let drawRect = CGRect(
+            x: rect.midX - drawSize.width / 2,
+            y: rect.midY - drawSize.height / 2,
+            width: drawSize.width,
+            height: drawSize.height
+        )
+        image.draw(in: drawRect)
     }
 
     private func drawWall(in rect: CGRect, scene: TimeScene, context: CGContext) {

@@ -687,7 +687,10 @@ private:
     _character = [character copy];
     delete _model;
     _model = NULL;
-    [self ensureModelLoaded];
+    [self clearDrawable];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self ensureModelLoaded];
+    });
 }
 
 - (void)playExpression:(NSString *)expressionName
@@ -755,6 +758,36 @@ private:
         delete _model;
         _model = NULL;
     }
+}
+
+- (void)clearDrawable
+{
+    if (_commandQueue == nil)
+    {
+        return;
+    }
+
+    CAMetalLayer* metalLayer = (CAMetalLayer*)self.layer;
+    id<CAMetalDrawable> drawable = [metalLayer nextDrawable];
+    if (drawable == nil)
+    {
+        return;
+    }
+
+    id<MTLCommandBuffer> commandBuffer = [_commandQueue commandBuffer];
+    if (commandBuffer == nil)
+    {
+        return;
+    }
+
+    MTLRenderPassDescriptor* passDescriptor = [MTLRenderPassDescriptor renderPassDescriptor];
+    passDescriptor.colorAttachments[0].texture = drawable.texture;
+    passDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
+    passDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
+    passDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0);
+
+    [commandBuffer presentDrawable:drawable];
+    [commandBuffer commit];
 }
 
 - (void)startDisplayLink
