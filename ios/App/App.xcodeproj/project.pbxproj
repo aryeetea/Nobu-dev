@@ -17,6 +17,7 @@
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		A1B2C3D4E5F6000000000016 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000000000017 /* SceneDelegate.swift */; };
 		A1B2C3D4E5F6000000000001 /* NobuRootViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000000000002 /* NobuRootViewController.swift */; };
+		BEEF00000000000000000002 /* SetupViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEEF00000000000000000001 /* SetupViewController.swift */; };
 		A1B2C3D4E5F6000000000003 /* NobuLive2DBridge.mm in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000000000004 /* NobuLive2DBridge.mm */; };
 		A1B2C3D4E5F6000000000005 /* models in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000000000006 /* models */; };
 		A1B2C3D4E5F6000000000010 /* NobuLive2DView.mm in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000000000011 /* NobuLive2DView.mm */; };
@@ -99,6 +100,7 @@
 		A1B2C3D4E5F6000000000013 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		A1B2C3D4E5F6000000000014 /* NobuLive2DView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NobuLive2DView.h; sourceTree = "<group>"; };
 		A1B2C3D4E5F6000000000017 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		BEEF00000000000000000001 /* SetupViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupViewController.swift; sourceTree = "<group>"; };
 		A1B2C3D4F0F000000000000 /* CubismCdiJson.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = CubismCdiJson.cpp; path = ../../vendor/live2d/ios/Framework/src/CubismCdiJson.cpp; sourceTree = SOURCE_ROOT; };
 		A1B2C3D4F0F000000000001 /* CubismDefaultParameterId.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = CubismDefaultParameterId.cpp; path = ../../vendor/live2d/ios/Framework/src/CubismDefaultParameterId.cpp; sourceTree = SOURCE_ROOT; };
 		A1B2C3D4F0F000000000002 /* CubismFramework.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = CubismFramework.cpp; path = ../../vendor/live2d/ios/Framework/src/CubismFramework.cpp; sourceTree = SOURCE_ROOT; };
@@ -196,6 +198,7 @@
 				A1B2C3D4E5F6000000000017 /* SceneDelegate.swift */,
 				A1B2C3D4E5F6000000000008 /* App-Bridging-Header.h */,
 				A1B2C3D4E5F6000000000002 /* NobuRootViewController.swift */,
+				BEEF00000000000000000001 /* SetupViewController.swift */,
 				A1B2C3D4E5F6000000000009 /* NobuLive2D */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
@@ -390,6 +393,7 @@
 				A1B2C3D4E5F6000000000003 /* NobuLive2DBridge.mm in Sources */,
 				A1B2C3D4E5F6000000000010 /* NobuLive2DView.mm in Sources */,
 				A1B2C3D4E5F6000000000001 /* NobuRootViewController.swift in Sources */,
+				BEEF00000000000000000002 /* SetupViewController.swift in Sources */,
 				A1B2C3D4F0B000000000000 /* CubismCdiJson.cpp in Sources */,
 				A1B2C3D4F0B000000000001 /* CubismDefaultParameterId.cpp in Sources */,
 				A1B2C3D4F0B000000000002 /* CubismFramework.cpp in Sources */,

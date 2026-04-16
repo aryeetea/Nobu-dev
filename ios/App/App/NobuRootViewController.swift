@@ -16,6 +16,7 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
     private let settingsPanelView = UIView()
     private let settingsScrollView = UIScrollView()
     private let settingsStackView = UIStackView()
+    private let profileSummaryLabel = UILabel()
     private let registerEndpointURL = URL(string: "https://heynobu.netlify.app/api/auth/register")!
     private let speechEndpointURL = URL(string: "https://heynobu.netlify.app/api/speech")!
     private let conversationEndpointURL = URL(string: "https://heynobu.netlify.app/api/conversation")!
@@ -405,6 +406,14 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
         settingsStackView.addArrangedSubview(detailLabel)
         settingsStackView.setCustomSpacing(18, after: detailLabel)
 
+        settingsStackView.addArrangedSubview(makeSettingsSectionLabel("Profile"))
+        profileSummaryLabel.font = UIFont.systemFont(ofSize: 13, weight: .medium)
+        profileSummaryLabel.textColor = UIColor(red: 0.42, green: 0.43, blue: 0.44, alpha: 1)
+        profileSummaryLabel.numberOfLines = 0
+        profileSummaryLabel.lineBreakMode = .byWordWrapping
+        settingsStackView.addArrangedSubview(profileSummaryLabel)
+        updateSettingsProfileSummary()
+
         settingsStackView.addArrangedSubview(makeSettingsSectionLabel("Character & voice"))
         settingsStackView.addArrangedSubview(makeSettingsButton(
             title: "Use feminine Nobu",
@@ -463,7 +472,7 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
             settingsPanelView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 18),
             settingsPanelView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -18),
             settingsPanelView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -18),
-            settingsPanelView.heightAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.heightAnchor, multiplier: 0.76),
+            settingsPanelView.heightAnchor.constraint(equalTo: view.safeAreaLayoutGuide.heightAnchor, multiplier: 0.76),
 
             settingsScrollView.leadingAnchor.constraint(equalTo: settingsPanelView.leadingAnchor),
             settingsScrollView.trailingAnchor.constraint(equalTo: settingsPanelView.trailingAnchor),
@@ -579,6 +588,7 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
     }
 
     private func openSettingsPanel() {
+        updateSettingsProfileSummary()
         view.bringSubviewToFront(settingsScrimButton)
         view.bringSubviewToFront(settingsPanelView)
         settingsButton.isHidden = true
@@ -592,6 +602,13 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
             self.settingsPanelView.alpha = 1
             self.settingsPanelView.transform = .identity
         }
+    }
+
+    private func updateSettingsProfileSummary() {
+        let name = savedUserName() ?? "Not set"
+        let username = UserDefaults.standard.string(forKey: "nobu.username")?.nilIfEmpty ?? "Not set"
+        let birthday = savedUserBirthday() ?? "Not set"
+        profileSummaryLabel.text = "Name: \(name)\nUsername: \(username)\nBirthday: \(birthday)"
     }
 
     @objc private func closeSettingsPanel() {
@@ -648,6 +665,7 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
         currentCharacter = character
         activeStyleIndex = 0
         roomEnvironmentView.character = currentCharacter
+        roomEnvironmentView.setNeedsDisplay()
         live2DView.setCharacter(currentCharacter)
 
         if currentCharacter == "Asuka" {
@@ -771,69 +789,36 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
         hasPresentedProfileSetup = true
         stopCurrentSpeech()
 
-        let alert = UIAlertController(
-            title: "Create your Nobu profile",
-            message: message ?? "Nobu needs your name and birthday for personal greetings.",
-            preferredStyle: .alert
-        )
-
-        alert.addTextField { textField in
-            textField.placeholder = "Your name"
-            textField.textContentType = .name
-            textField.autocapitalizationType = .words
+        let setupViewController = SetupViewController()
+        setupViewController.onSubmit = { [weak self] profile, setupViewController in
+            self?.createNobuProfile(profile, setupViewController: setupViewController)
         }
-        alert.addTextField { textField in
-            textField.placeholder = "Username"
-            textField.textContentType = .username
-            textField.autocapitalizationType = .none
-            textField.autocorrectionType = .no
-        }
-        alert.addTextField { textField in
-            textField.placeholder = "Password"
-            textField.textContentType = .newPassword
-            textField.isSecureTextEntry = true
-        }
-        alert.addTextField { textField in
-            textField.placeholder = "Birthday (YYYY-MM-DD)"
-            textField.keyboardType = .numbersAndPunctuation
+        if let message {
+            setupViewController.loadViewIfNeeded()
+            setupViewController.showError(message)
         }
 
-        alert.addAction(UIAlertAction(title: "Create profile", style: .default) { [weak self, weak alert] _ in
-            guard let self else {
-                return
-            }
-
-            let fields = alert?.textFields ?? []
-            let name = fields[safe: 0]?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            let username = fields[safe: 1]?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            let password = fields[safe: 2]?.text ?? ""
-            let birthday = fields[safe: 3]?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-
-            self.hasPresentedProfileSetup = false
-            self.createNobuProfile(name: name, username: username, password: password, birthday: birthday)
-        })
-
-        present(alert, animated: true)
+        present(setupViewController, animated: true)
     }
 
-    private func createNobuProfile(name: String, username: String, password: String, birthday: String) {
-        guard !name.isEmpty else {
-            presentProfileSetup(message: "Add your name so Nobu knows what to call you.")
+    private func createNobuProfile(_ profile: NobuSetupProfile, setupViewController: SetupViewController) {
+        guard !profile.name.isEmpty else {
+            setupViewController.showError("Add your name so Nobu knows what to call you.")
             return
         }
 
-        guard username.count >= 3 else {
-            presentProfileSetup(message: "Choose a username with at least 3 characters.")
+        guard profile.username.count >= 3 else {
+            setupViewController.showError("Choose a username with at least 3 characters.")
             return
         }
 
-        guard password.count >= 8 else {
-            presentProfileSetup(message: "Use a password with at least 8 characters.")
+        guard profile.password.count >= 8 else {
+            setupViewController.showError("Use a password with at least 8 characters.")
             return
         }
 
-        guard isValidBirthdayString(birthday) else {
-            presentProfileSetup(message: "Use your birthday in YYYY-MM-DD format.")
+        guard isValidBirthdayString(profile.birthday) else {
+            setupViewController.showError("Use your birthday in YYYY-MM-DD format.")
             return
         }
 
@@ -842,10 +827,10 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
         request.timeoutInterval = 15
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try? JSONSerialization.data(withJSONObject: [
-            "birthday": birthday,
-            "name": name,
-            "password": password,
-            "username": username
+            "birthday": profile.birthday,
+            "name": profile.name,
+            "password": profile.password,
+            "username": profile.username
         ])
 
         registerRequestTask = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
@@ -857,20 +842,24 @@ final class NobuRootViewController: UIViewController, AVAudioPlayerDelegate {
                 self.registerRequestTask = nil
 
                 if let error {
-                    self.presentProfileSetup(message: "Nobu could not create the account yet: \(error.localizedDescription)")
+                    setupViewController.showError("Nobu could not create the account yet: \(error.localizedDescription)")
                     return
                 }
 
                 if let httpResponse = response as? HTTPURLResponse, !(200..<300).contains(httpResponse.statusCode) {
                     let serverMessage = self.parseServerError(data: data) ?? "Try a different username."
-                    self.presentProfileSetup(message: serverMessage)
+                    setupViewController.showError(serverMessage)
                     return
                 }
 
-                UserDefaults.standard.set(name, forKey: "nobu.userName")
-                UserDefaults.standard.set(username.lowercased(), forKey: "nobu.username")
-                UserDefaults.standard.set(birthday, forKey: "nobu.birthday")
-                self.startOpeningGreetingIfNeeded()
+                UserDefaults.standard.set(profile.name, forKey: "nobu.userName")
+                UserDefaults.standard.set(profile.username.lowercased(), forKey: "nobu.username")
+                UserDefaults.standard.set(profile.birthday, forKey: "nobu.birthday")
+                self.updateSettingsProfileSummary()
+                self.hasPresentedProfileSetup = false
+                setupViewController.dismiss(animated: true) {
+                    self.startOpeningGreetingIfNeeded()
+                }
             }
         }
         registerRequestTask?.resume()
@@ -1383,6 +1372,8 @@ private final class NobuRoomEnvironmentView: UIView {
             return
         }
 
+        let expectedAssetName = character == "Asuka" ? "NobuRoomAsuka" : "NobuRoomAlexia"
+        print("Missing room asset \(expectedAssetName)")
         drawWall(in: rect, scene: scene, context: context)
         drawWindow(in: rect, scene: scene, context: context)
         drawFloor(in: rect, scene: scene, context: context)
@@ -1404,10 +1395,10 @@ private final class NobuRoomEnvironmentView: UIView {
 
     private func bundledRoomImage(for scene: TimeScene) -> UIImage? {
         if character == "Asuka" {
-            return UIImage(named: "NobuRoomAsuka") ?? UIImage(named: "NobuRoomAlexia")
+            return UIImage(named: "NobuRoomAsuka")
         }
 
-        return UIImage(named: "NobuRoomAlexia") ?? UIImage(named: "NobuRoomAsuka")
+        return UIImage(named: "NobuRoomAlexia")
     }
 
     private func drawAspectFill(_ image: UIImage, in rect: CGRect) {
