@@ -184,7 +184,7 @@ export function createInfluencerRecommendation(profile: ScanFitProfile, influenc
     ? `Search your preferred brands first: ${profile.favoriteBrands}.`
     : 'Choose brands you already know fit you before trying a new label.'
 
-  return `To recreate ${name}'s look, copy the silhouette before copying exact pieces: ${lookDescription}. ${sizeAnchor} ${brandNote} Keep one hero item and replace anything that fights your proportions or comfort.`
+  return `To recreate ${name}'s look, copy the silhouette before copying exact pieces: ${lookDescription}. ${sizeAnchor} ${brandNote} Keep one hero item and replace anything that fights your proportions or comfort. Honest advice, but always with warmth and encouragement.`
 }
 
 export function createScanFitFeedback({ vibe, occasion, notes, signal, profile }: FeedbackInput) {
@@ -193,20 +193,21 @@ export function createScanFitFeedback({ vibe, occasion, notes, signal, profile }
   const notesRead = getNotesRead(notes)
   const profileRead = getProfileRead(profile)
 
+  // Nobu is always honest, warm, and friendly, regardless of style.
   switch (vibe) {
     case 'genz':
-      return `Quick read: the fit needs one clear main character. ${signalRead} ${occasionRead} ${notesRead} ${profileRead} If one piece is fighting for attention, swap it for something cleaner and let the strongest item carry.`
+      return `Quick read (with love): the fit needs one clear main character. ${signalRead} ${occasionRead} ${notesRead} ${profileRead} If one piece is fighting for attention, swap it for something cleaner and let the strongest item carry. Always honest, always rooting for you.`
     case 'fashionExpert':
-      return `My stylist read: ${signalRead} ${occasionRead} ${notesRead} ${profileRead} Check three things before saving it as a hit: shoulder line, waist balance, and shoe weight. If any one feels off, simplify the lower half first.`
+      return `My stylist read (with kindness): ${signalRead} ${occasionRead} ${notesRead} ${profileRead} Check three things before saving it as a hit: shoulder line, waist balance, and shoe weight. If any one feels off, simplify the lower half first. Honest advice, but always with warmth.`
     case 'hypeCoach':
-      return `You can make this work. ${signalRead} ${occasionRead} ${notesRead} ${profileRead} Keep the piece that gives you confidence, then clean up the part that feels uncertain. Strong outfit, sharper edit.`
+      return `You can make this work! ${signalRead} ${occasionRead} ${notesRead} ${profileRead} Keep the piece that gives you confidence, then clean up the part that feels uncertain. Strong outfit, sharper edit. Honest, but always supportive.`
     case 'minimalist':
-      return `${signalRead} ${occasionRead} ${notesRead} ${profileRead} Fix one thing: balance the silhouette, then save it.`
+      return `${signalRead} ${occasionRead} ${notesRead} ${profileRead} Fix one thing: balance the silhouette, then save it. Direct, but always with care.`
     case 'playful':
-      return `ScanFit verdict loading: potential is present. ${signalRead} ${occasionRead} ${notesRead} ${profileRead} The outfit needs a cleaner story. Pick the hero piece, calm the backup dancers, and let the look land.`
+      return `ScanFit verdict loading: potential is present! ${signalRead} ${occasionRead} ${notesRead} ${profileRead} The outfit needs a cleaner story. Pick the hero piece, calm the backup dancers, and let the look land. Honest, but always with a smile.`
     case 'chill':
     default:
-      return `Here is the honest read: ${signalRead} ${occasionRead} ${notesRead} ${profileRead} I would keep what feels most like you, then adjust either the pants or shoes first. Small change, better balance.`
+      return `Here is the honest read (with warmth): ${signalRead} ${occasionRead} ${notesRead} ${profileRead} I would keep what feels most like you, then adjust either the pants or shoes first. Small change, better balance. Always honest, always kind.`
   }
 }
 

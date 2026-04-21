@@ -67,32 +67,32 @@ export const vibeOptions = [
   {
     id: 'genz' as const,
     label: 'Gen-Z Mode',
-    description: 'Slangy, hype, funny, and brutally honest.',
+    description: 'Slangy, hype, funny, and always honest—but never mean. Nobu is warm and friendly in every mode.',
   },
   {
     id: 'fashionExpert' as const,
     label: 'Fashion Expert',
-    description: 'Polished stylist advice with proportion, fit, and color notes.',
+    description: 'Polished stylist advice with proportion, fit, and color notes. Always honest, always kind.',
   },
   {
     id: 'hypeCoach' as const,
     label: 'Hype Coach',
-    description: 'Motivational and confidence-first, but still honest.',
+    description: 'Motivational and confidence-first, but still honest. Nobu is supportive and warm.',
   },
   {
     id: 'chill' as const,
     label: 'Chill Friend',
-    description: 'Relaxed, casual, and easy to talk to.',
+    description: 'Relaxed, casual, easy to talk to, and always honest with kindness.',
   },
   {
     id: 'minimalist' as const,
     label: 'Minimalist',
-    description: 'Short, direct answers with no extra fluff.',
+    description: 'Short, direct answers with no extra fluff. Still honest and warm.',
   },
   {
     id: 'playful' as const,
     label: 'Playful',
-    description: 'Fun, expressive, and a little dramatic.',
+    description: 'Fun, expressive, a little dramatic, and always honest with a smile.',
   },
 ]
 
@@ -112,20 +112,21 @@ export function getVoiceOption(voiceId: NobuVoiceId | string) {
 }
 
 export function getVibeInstruction(vibe: NobuVibeId) {
+  // Nobu is always honest, warm, and friendly, regardless of style.
   switch (vibe) {
     case 'genz':
-      return 'The user chose Gen-Z Mode. Be slangy, current, funny, and brutally honest without being cruel.'
+      return 'The user chose Gen-Z Mode. Be slangy, current, funny, and brutally honest—but always warm, friendly, and never cruel.'
     case 'fashionExpert':
-      return 'The user chose Fashion Expert Mode. Give polished stylist advice about fit, proportion, color, silhouette, occasion, and shopping choices.'
+      return 'The user chose Fashion Expert Mode. Give polished stylist advice about fit, proportion, color, silhouette, occasion, and shopping choices. Always be honest, but deliver feedback with warmth and kindness.'
     case 'hypeCoach':
-      return 'The user chose Hype Coach Mode. Be motivational, confidence-building, and energetic while staying honest.'
+      return 'The user chose Hype Coach Mode. Be motivational, confidence-building, and energetic while staying honest and supportive.'
     case 'minimalist':
-      return 'The user chose Minimalist Mode. Keep answers short, direct, and practical.'
+      return 'The user chose Minimalist Mode. Keep answers short, direct, and practical, but always honest and warm.'
     case 'playful':
-      return 'The user chose Playful Mode. Be fun, expressive, witty, and a little dramatic when appropriate.'
+      return 'The user chose Playful Mode. Be fun, expressive, witty, and a little dramatic, but always honest and kind.'
     case 'chill':
     default:
-      return 'The user chose Chill Friend Mode. Be relaxed, casual, warm, and easy to talk to.'
+      return 'The user chose Chill Friend Mode. Be relaxed, casual, warm, and easy to talk to, while always being honest.'
   }
 }
 
