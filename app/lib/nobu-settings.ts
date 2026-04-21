@@ -19,9 +19,10 @@ export type NobuSettings = {
 
 export const NOBU_SETTINGS_KEY = 'nobuSettings'
 export const NOBU_NAME_KEY = 'nobuName'
+export const NOBU_ASSISTANT_NAME = 'Nobu'
 
 export const DEFAULT_NOBU_SETTINGS: NobuSettings = {
-  name: 'Nobu',
+  name: NOBU_ASSISTANT_NAME,
   character: 'female',
   voiceId: 'eXpIbVcVbLo8ZJQDlDnl',
   vibe: 'chill',
@@ -57,6 +58,10 @@ export const characterOptions = [
     description: 'Asuka: calm, sharp, and grounded on screen.',
   },
 ]
+
+export function getVoiceIdForCharacter(character: NobuSettings['character']): NobuVoiceId {
+  return character === 'male' ? '5kMbtRSEKIkRZSdXxrZg' : 'eXpIbVcVbLo8ZJQDlDnl'
+}
 
 export const vibeOptions = [
   {
@@ -147,25 +152,26 @@ export function loadNobuSettings(): NobuSettings {
 
   try {
     const saved = window.localStorage.getItem(NOBU_SETTINGS_KEY)
-    const legacyName = window.localStorage.getItem(NOBU_NAME_KEY)?.trim()
     const parsed = saved ? JSON.parse(saved) as Partial<NobuSettings> & { voice?: string } : {}
-    const migratedVoiceId =
+    const savedVoiceId =
       parsed.voiceId
       ?? voiceOptions.find((option) => option.id === parsed.voice)?.voiceId
       ?? DEFAULT_NOBU_SETTINGS.voiceId
     const migratedCharacter =
       parsed.character === 'male' || parsed.character === 'female'
         ? parsed.character
-        : migratedVoiceId === '5kMbtRSEKIkRZSdXxrZg'
+        : savedVoiceId === '5kMbtRSEKIkRZSdXxrZg'
           ? 'male'
           : DEFAULT_NOBU_SETTINGS.character
+    const migratedVoiceId = getVoiceIdForCharacter(migratedCharacter)
     const settings = {
       ...DEFAULT_NOBU_SETTINGS,
       ...parsed,
       character: migratedCharacter,
-      name: parsed.name?.trim() || legacyName || DEFAULT_NOBU_SETTINGS.name,
+      name: NOBU_ASSISTANT_NAME,
       vibe: migrateVibe(parsed.vibe),
       voiceId: migratedVoiceId,
+      hasUsedRename: true,
     }
 
     return settings
@@ -175,9 +181,15 @@ export function loadNobuSettings(): NobuSettings {
 }
 
 export function saveNobuSettings(settings: NobuSettings) {
-  window.localStorage.setItem(NOBU_SETTINGS_KEY, JSON.stringify(settings))
-  window.localStorage.setItem(NOBU_NAME_KEY, settings.name)
-  window.dispatchEvent(new CustomEvent('nobu-settings-change', { detail: settings }))
+  const fixedSettings = {
+    ...settings,
+    name: NOBU_ASSISTANT_NAME,
+    hasUsedRename: true,
+  }
+
+  window.localStorage.setItem(NOBU_SETTINGS_KEY, JSON.stringify(fixedSettings))
+  window.localStorage.setItem(NOBU_NAME_KEY, NOBU_ASSISTANT_NAME)
+  window.dispatchEvent(new CustomEvent('nobu-settings-change', { detail: fixedSettings }))
 }
 
 export function hexToRgb(hex: string) {

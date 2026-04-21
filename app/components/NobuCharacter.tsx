@@ -48,6 +48,7 @@ type PixiApp = {
     maxFPS: number
     minFPS: number
     remove: (fn: () => void) => void
+    stop?: () => void
   }
   view: HTMLCanvasElement
 }
@@ -337,7 +338,8 @@ export default function NobuCharacter({
         })
 
         if (cancelled) {
-          app.destroy(true, { baseTexture: true, children: true, texture: true })
+          app.ticker.stop?.()
+          app.destroy(true, { baseTexture: false, children: false, texture: false })
           return
         }
 
@@ -387,7 +389,14 @@ export default function NobuCharacter({
       if (pacingFrame && appRef.current) {
         appRef.current.ticker.remove(pacingFrame)
       }
-      appRef.current?.destroy(true, { baseTexture: true, children: true, texture: true })
+      if (appRef.current && typeof appRef.current.destroy === 'function') {
+        try {
+          appRef.current.ticker.stop?.()
+          appRef.current.destroy(true, { baseTexture: false, children: false, texture: false })
+        } catch (e) {
+          console.warn('Error during appRef.current.destroy:', e)
+        }
+      }
       modelRef.current = null
       appRef.current = null
       basePlacementRef.current = null

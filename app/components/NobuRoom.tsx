@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { NobuRoomAction } from './NobuCharacter'
 
 type Props = {
@@ -51,10 +51,13 @@ export default function NobuRoom({ character, onRoomAction }: Props) {
   const theme = roomThemes[character]
   const [activeArea, setActiveArea] = useState<RoomArea | null>(null)
 
+  useEffect(() => {
+    onRoomAction?.(activeArea ?? 'center')
+  }, [activeArea, onRoomAction])
+
   function activateArea(area: RoomArea) {
     setActiveArea((current) => {
       const nextArea = current === area ? null : area
-      onRoomAction?.(nextArea ?? 'center')
       return nextArea
     })
   }

@@ -3,16 +3,16 @@
 import { useRouter } from 'next/navigation'
 import { type CSSProperties, useState } from 'react'
 import {
+  NOBU_ASSISTANT_NAME,
   characterOptions,
   colorOptions,
   DEFAULT_NOBU_SETTINGS,
+  getVoiceIdForCharacter,
   hexToRgb,
   saveNobuSettings,
   vibeOptions,
-  voiceOptions,
   type NobuSettings,
   type NobuVibeId,
-  type NobuVoiceId,
 } from '../lib/nobu-settings'
 import { useSession } from 'next-auth/react'
 
@@ -20,9 +20,7 @@ export default function OnboardingPage() {
   const router = useRouter()
   const { data: session, status: authStatus } = useSession()
   const [step, setStep] = useState(0)
-  const [name, setName] = useState('')
   const [character, setCharacter] = useState<NobuSettings['character']>('female')
-  const [voiceId, setVoiceId] = useState<NobuVoiceId>('eXpIbVcVbLo8ZJQDlDnl')
   const [vibe, setVibe] = useState<NobuVibeId>('chill')
   const [color, setColor] = useState('#7c3aed')
   const orbStyle = {
@@ -36,10 +34,10 @@ export default function OnboardingPage() {
       character,
       color,
       hasCompletedOnboarding: true,
-      hasUsedRename: false,
-      name: name.trim(),
+      hasUsedRename: true,
+      name: NOBU_ASSISTANT_NAME,
       vibe,
-      voiceId,
+      voiceId: getVoiceIdForCharacter(character),
     }
 
     saveNobuSettings(settings)
@@ -62,8 +60,6 @@ export default function OnboardingPage() {
         .onboarding-step { width: min(920px, 100%); display: grid; justify-items: center; gap: 26px; animation: step-in 380ms ease both; text-align: center; }
         .onboarding-title { font-size: 46px; line-height: 1.05; font-weight: 600; letter-spacing: 0; }
         .onboarding-copy { max-width: 560px; color: rgba(255,255,255,0.56); font-size: 14px; line-height: 1.7; }
-        .name-input { width: min(520px, 100%); border: 0; border-bottom: 1.5px solid rgba(var(--nobu-rgb),0.7); background: transparent; color: #fff; font-size: 30px; outline: 0; padding: 16px; text-align: center; }
-        .name-input::placeholder { color: rgba(255,255,255,0.24); }
         .primary-btn { border: 1.5px solid rgba(var(--nobu-rgb),0.5); border-radius: 999px; background: var(--nobu-color); color: #fff; cursor: pointer; font-size: 14px; font-weight: 600; padding: 13px 32px; }
         .choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; width: min(680px, 100%); }
         .vibe-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; width: min(860px, 100%); }
@@ -82,38 +78,17 @@ export default function OnboardingPage() {
         @media (max-width: 760px) { .choice-grid, .vibe-grid, .color-layout { grid-template-columns: 1fr; } .onboarding-title { font-size: 38px; } .color-layout { justify-items: center; } }
       `}</style>
 
-      <div aria-label={`Step ${step + 1} of 5`} className="step-indicator">
-        {[0, 1, 2, 3, 4].map((item) => (
+      <div aria-label={`Step ${step + 1} of 3`} className="step-indicator">
+        {[0, 1, 2].map((item) => (
           <span className={`step-dot ${step === item ? 'active' : ''}`} key={item} />
         ))}
       </div>
 
       {step === 0 && (
         <section className="onboarding-step">
-          <h1 className="onboarding-title">What will you call me?</h1>
-          <input
-            autoFocus
-            className="name-input"
-            onChange={(event) => setName(event.target.value)}
-            placeholder="Give me a name..."
-            value={name}
-          />
-          <p className="onboarding-copy">
-            This name becomes your wake word. You get one free rename later. After that, it is locked.
-          </p>
-          {name.trim() && (
-            <button className="primary-btn" onClick={() => setStep(1)}>
-              Continue
-            </button>
-          )}
-        </section>
-      )}
-
-      {step === 1 && (
-        <section className="onboarding-step">
           <h1 className="onboarding-title">Who should appear?</h1>
           <p className="onboarding-copy">
-            This controls the 2D character you see. Your voice can still be picked separately.
+            Nobu is always Nobu. This controls the 2D character and voice together. Alexia uses the feminine Nobu voice. Asuka uses the masculine Nobu voice.
           </p>
           <div className="choice-grid">
             {characterOptions.map((option) => (
@@ -127,34 +102,13 @@ export default function OnboardingPage() {
               </button>
             ))}
           </div>
-          <button className="primary-btn" onClick={() => setStep(2)}>
+          <button className="primary-btn" onClick={() => setStep(1)}>
             Continue
           </button>
         </section>
       )}
 
-      {step === 2 && (
-        <section className="onboarding-step">
-          <h1 className="onboarding-title">How should I sound?</h1>
-          <div className="choice-grid">
-            {voiceOptions.map((option) => (
-              <button
-                className={`choice-card ${voiceId === option.voiceId ? 'selected' : ''}`}
-                key={option.id}
-                onClick={() => setVoiceId(option.voiceId)}
-              >
-                <h2>{option.label}</h2>
-                <p>{option.description}</p>
-              </button>
-            ))}
-          </div>
-          <button className="primary-btn" onClick={() => setStep(3)}>
-            Continue
-          </button>
-        </section>
-      )}
-
-      {step === 3 && (
+      {step === 1 && (
         <section className="onboarding-step">
           <h1 className="onboarding-title">How should I talk to you?</h1>
           <div className="vibe-grid">
@@ -169,13 +123,13 @@ export default function OnboardingPage() {
               </button>
             ))}
           </div>
-          <button className="primary-btn" onClick={() => setStep(4)}>
+          <button className="primary-btn" onClick={() => setStep(2)}>
             Continue
           </button>
         </section>
       )}
 
-      {step === 4 && (
+      {step === 2 && (
         <section className="onboarding-step">
           <h1 className="onboarding-title">Pick my glow.</h1>
           <div className="color-layout">
@@ -194,7 +148,7 @@ export default function OnboardingPage() {
             </div>
           </div>
           <button className="primary-btn" onClick={completeOnboarding}>
-            Start with {name.trim()}
+            Start with Nobu
           </button>
         </section>
       )}

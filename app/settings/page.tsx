@@ -3,23 +3,24 @@
 import Link from 'next/link'
 import { type CSSProperties, useEffect, useState } from 'react'
 import {
+  NOBU_ASSISTANT_NAME,
   characterOptions,
   colorOptions,
+  getVoiceIdForCharacter,
+  getVoiceOption,
   hexToRgb,
   loadNobuSettings,
   saveNobuSettings,
   vibeOptions,
-  voiceOptions,
   type NobuSettings,
   type NobuVibeId,
 } from '../lib/nobu-settings'
 import { useSession } from 'next-auth/react'
+import { live2dModels } from '../lib/live2d-models'
 
 export default function SettingsPage() {
   const { data: session, status: authStatus } = useSession()
   const [settings, setSettings] = useState<NobuSettings>(loadNobuSettings)
-  const [isRenaming, setIsRenaming] = useState(false)
-  const [nextName, setNextName] = useState(settings.name)
   const orbStyle = {
     '--nobu-color': settings.color,
     '--nobu-rgb': hexToRgb(settings.color),
@@ -41,19 +42,15 @@ export default function SettingsPage() {
     saveNobuSettings(nextSettings)
   }
 
-  function saveRename() {
-    const trimmedName = nextName.trim()
-    if (!trimmedName || settings.hasUsedRename) return
-    const confirmed = window.confirm('Are you sure? This is the last time you can rename your Nobu.')
-
-    if (!confirmed) return
-
+  function updateCharacter(character: NobuSettings['character']) {
     updateSettings({
-      hasUsedRename: true,
-      name: trimmedName,
+      character,
+      voiceId: getVoiceIdForCharacter(character),
     })
-    setIsRenaming(false)
   }
+
+  const currentModel = live2dModels[settings.character]
+  const pairedVoice = getVoiceOption(settings.voiceId)
 
   return (
     <main className="settings-shell" style={orbStyle}>
@@ -69,18 +66,20 @@ export default function SettingsPage() {
         .setting-label { color: rgba(255,255,255,0.52); font-size: 12px; font-weight: 700; text-transform: uppercase; }
         .name-lock { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: 26px; font-weight: 600; }
         .lock-icon { color: rgba(255,255,255,0.7); }
-        .settings-input { width: min(420px, 100%); border: 0; border-bottom: 1.5px solid rgba(var(--nobu-rgb),0.7); background: transparent; color: #fff; font-size: 24px; outline: 0; padding: 10px 0; }
         .muted { color: rgba(255,255,255,0.52); font-size: 14px; line-height: 1.6; }
-        .action-btn { border: 1.5px solid rgba(var(--nobu-rgb),0.5); border-radius: 999px; background: var(--nobu-color); color: #fff; cursor: pointer; font-size: 14px; font-weight: 600; padding: 11px 22px; width: fit-content; }
-        .ghost-btn { border: 1.5px solid rgba(255,255,255,0.14); border-radius: 999px; background: rgba(255,255,255,0.06); color: #fff; cursor: pointer; font-size: 14px; padding: 11px 18px; width: fit-content; }
         .option-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
         .option-card { border: 1.5px solid rgba(255,255,255,0.12); border-radius: 8px; background: rgba(255,255,255,0.04); color: #fff; cursor: pointer; min-height: 88px; padding: 18px; text-align: left; }
         .option-card.selected { border-color: rgba(var(--nobu-rgb),0.75); background: rgba(var(--nobu-rgb),0.13); }
+        .info-card { border: 1.5px solid rgba(255,255,255,0.12); border-radius: 8px; background: rgba(255,255,255,0.04); padding: 18px; }
+        .inventory-grid { display: grid; gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .pill-row { display: flex; flex-wrap: wrap; gap: 8px; }
+        .pill { border: 1px solid rgba(255,255,255,0.12); border-radius: 999px; color: rgba(255,255,255,0.72); font-size: 12px; padding: 7px 10px; }
         .color-row { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; }
         .color-btn { aspect-ratio: 1; border: 1.5px solid rgba(255,255,255,0.12); border-radius: 8px; cursor: pointer; box-shadow: 0 0 20px var(--swatch); background: radial-gradient(circle at 32% 30%, #fff, var(--swatch) 42%, #050505); }
         .color-btn.selected { border-color: #fff; }
         .preview-orb { width: 112px; height: 112px; border-radius: 999px; background: radial-gradient(circle at 32% 30%, #fff 0%, var(--nobu-color) 42%, #17051f 100%); border: 2px solid rgba(var(--nobu-rgb),0.5); box-shadow: 0 0 54px rgba(var(--nobu-rgb),0.52); }
-        @media (max-width: 760px) { .option-grid, .color-row { grid-template-columns: 1fr 1fr; } .settings-title { font-size: 38px; } }
+        @media (max-width: 760px) { .option-grid, .color-row, .inventory-grid { grid-template-columns: 1fr 1fr; } .settings-title { font-size: 38px; } }
+        @media (max-width: 520px) { .inventory-grid { grid-template-columns: 1fr; } }
       `}</style>
 
       <div className="settings-wrap">
@@ -116,32 +115,10 @@ export default function SettingsPage() {
                   strokeWidth="1.8"
                 />
               </svg>
-              <span>{settings.name}</span>
+              <span>{NOBU_ASSISTANT_NAME}</span>
             </div>
 
-            {!settings.hasUsedRename ? (
-              <>
-                <p className="muted">You have 1 rename available</p>
-                {isRenaming ? (
-                  <>
-                    <input
-                      className="settings-input"
-                      onChange={(event) => setNextName(event.target.value)}
-                      value={nextName}
-                    />
-                    <button className="action-btn" onClick={saveRename}>
-                      Save permanent name
-                    </button>
-                  </>
-                ) : (
-                  <button className="ghost-btn" onClick={() => setIsRenaming(true)}>
-                    Rename
-                  </button>
-                )}
-              </>
-            ) : (
-              <p className="muted">Your Nobu&apos;s name is permanent</p>
-            )}
+            <p className="muted">The assistant is always Nobu for every account.</p>
           </div>
 
           <div className="setting-row">
@@ -151,7 +128,7 @@ export default function SettingsPage() {
                 <button
                   className={`option-card ${settings.character === option.id ? 'selected' : ''}`}
                   key={option.id}
-                  onClick={() => updateSettings({ character: option.id })}
+                  onClick={() => updateCharacter(option.id)}
                 >
                   <strong>{option.label}</strong>
                   <p className="muted">{option.description}</p>
@@ -161,18 +138,43 @@ export default function SettingsPage() {
           </div>
 
           <div className="setting-row">
-            <div className="setting-label">Voice</div>
-            <div className="option-grid">
-              {voiceOptions.map((option) => (
-                <button
-                  className={`option-card ${settings.voiceId === option.voiceId ? 'selected' : ''}`}
-                  key={option.id}
-                  onClick={() => updateSettings({ voiceId: option.voiceId })}
-                >
-                  <strong>{option.label}</strong>
-                  <p className="muted">{option.description}</p>
-                </button>
-              ))}
+            <div className="setting-label">Voice Pairing</div>
+            <div className="info-card">
+              <strong>{pairedVoice.label} Nobu voice</strong>
+              <p className="muted">
+                {pairedVoice.description} Voice is locked to the selected character so Alexia stays feminine and Asuka stays masculine.
+              </p>
+            </div>
+          </div>
+
+          <div className="setting-row">
+            <div className="setting-label">Current Model Library</div>
+            <div className="inventory-grid">
+              <div className="info-card">
+                <strong>{currentModel.label}</strong>
+                <p className="muted">{currentModel.path}</p>
+              </div>
+              <div className="info-card">
+                <strong>{currentModel.expressions.length} expressions</strong>
+                <p className="muted">Used for mood, reactions, and creator-provided style changes.</p>
+              </div>
+              <div className="info-card">
+                <strong>{currentModel.motions.length} motions</strong>
+                <p className="muted">Available through the model control button in the room.</p>
+              </div>
+            </div>
+
+            <div className="info-card">
+              <strong>Creator toggles</strong>
+              <div className="pill-row" style={{ marginTop: 12 }}>
+                {currentModel.toggles.length > 0 ? (
+                  currentModel.toggles.map((toggle) => (
+                    <span className="pill" key={toggle.parameterId}>{toggle.label}</span>
+                  ))
+                ) : (
+                  <span className="pill">No toggles found</span>
+                )}
+              </div>
             </div>
           </div>
 
